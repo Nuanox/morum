@@ -14,7 +14,7 @@
     "typecheck:core": "node scripts/compile-core.mjs --check",
     "test:unit": "node scripts/compile-core.mjs && node --experimental-transform-types --no-warnings --import ./tests/helpers/register-ts-lib.mjs --test tests/unit/*.test.mjs",
     "test:reference": "node scripts/run-reference.mjs",
-    "test:db": "node scripts/compile-server.mjs && node --import ./tests/helpers/register-server-only.mjs --test --test-concurrency=1 tests/db/stage03.integration.test.mjs tests/db/stage04.integration.test.mjs tests/db/open-contribution.integration.test.mjs tests/db/read-surfaces.integration.test.mjs tests/db/security.integration.test.mjs tests/db/quote-selectors.integration.test.mjs",
+    "test:db": "node scripts/compile-server.mjs && node --import ./tests/helpers/register-server-only.mjs --test --test-concurrency=1 tests/db/stage03.integration.test.mjs tests/db/stage04.integration.test.mjs tests/db/open-contribution.integration.test.mjs tests/db/read-surfaces.integration.test.mjs tests/db/security.integration.test.mjs tests/db/quote-selectors.integration.test.mjs tests/db/stable-version.integration.test.mjs",
     "db:apply:test": "node scripts/apply-test-db.mjs",
     "db:lint": "node scripts/db-lint.mjs",
     "test:server": "node scripts/compile-server.mjs && node --import ./tests/helpers/register-server-only.mjs --test tests/server/*.test.mjs",

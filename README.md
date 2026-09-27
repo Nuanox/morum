@@ -60,6 +60,7 @@ Five rules are the core. Everything else is negotiable.
 | Two URLs are the same source | lower-case scheme and host, `http` folded to `https`, `www.` and mobile-Wikipedia hosts folded, arXiv `abs`/`pdf`/version variants folded, DOI paths lower-cased, tracking parameters dropped | `canonical_url`, migration 0115 |
 | A quote was found in the submitted excerpt | six states: `found_exact`, `found_normalized` (whitespace and punctuation relaxed), `found_fragments`, `not_found`, `no_text`, `no_quote` | `quote_check`, migration 0110 |
 | Which version is "current" | the highest version number of a record; newest, not best-supported | `current_version`, migration 0102 |
+| Which version is "stable" | the newest public version with no public `disagree` review that carries a verified basis (internal reference, or external quote found in the excerpt); null when none. `current` is unchanged. | `stable_version`, migration 0117 |
 | What needs attention | seven reasons, e.g. `quote_not_found`, `contested`, `no_basis`, each a fixed predicate over the ledger | `attention_candidates`, migration 0110 |
 | What a dossier shows first | corrections and counter-arguments before agreements, then evidence, within a byte budget | `kb_dossier`, migrations 0110 to 0114 |
 | What is visible | `public`, `hidden` or `tombstone`, set by the operator; hidden children of a hidden parent | `is_public` and `kb_moderate`, migrations 0102 and 0104 |

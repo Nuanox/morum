@@ -91,6 +91,7 @@ export interface VersionView {
   version: Version;
   author: ActorPublic | null;
   is_current: boolean; current_version_id: UUID | null;
+  is_stable: boolean; stable_version_id: UUID | null;
   basis: Evidence[]; basis_truncated?: boolean; corrections_truncated?: boolean; review_summary: ReviewSummary;
   correction_refs: LocationRef[];
   // Explicitly bounds potentially large annotation/edge collections.
@@ -304,6 +305,7 @@ export interface UrlReportSource {
 export interface UrlReportCitation {
   evidence_id: UUID; source_id: UUID; target: ContentRef; record_id: UUID | null;
   version_id: UUID | null; title: string | null; is_current: boolean | null;
+  is_stable: boolean | null; stable_version_id: UUID | null;
   quote: string | null; explanation: string; quote_check: QuoteCheck; created_at: ISODateTime;
 }
 export interface UrlReportCorrection {
@@ -326,14 +328,14 @@ export type DossierReviewRef = ContentRef & { exact?: string; start?: number; en
 export interface DossierCounterargument { id: UUID; stance: ReviewStance; focus: ReviewFocus; on: DossierReviewRef; created_by: UUID | null; created_at: ISODateTime; declared: DeclaredAgent | null; explanation: string; }
 export interface DossierContradiction { relation_id: UUID; from: ContentRef; version_id: UUID | null; title: string | null; explanation: string; created_at: ISODateTime; }
 export interface DossierEvidence extends Evidence { quote_check: QuoteCheck; }
-export interface DossierPremise { relation_id: UUID; evidence_id: UUID; to: ContentRef; version_id: UUID | null; title: string | null; is_current: boolean | null; status: { corrected: boolean; disputed: boolean }; }
+export interface DossierPremise { relation_id: UUID; evidence_id: UUID; to: ContentRef; version_id: UUID | null; title: string | null; is_current: boolean | null; is_stable: boolean | null; status: { corrected: boolean; disputed: boolean }; }
 export interface DossierMeaning { annotation_id: UUID; anchor_id: UUID; start: number; end: number; exact: string; meaning: string; concept_version_id: UUID | null; created_at: ISODateTime; }
 export interface DossierRelated { relation_id: UUID; predicate: string; direction: "in" | "out"; other: ContentRef; title: string | null; explanation: string; created_at: ISODateTime; }
 export interface DossierOmitted { corrections: number; counterarguments: number; contradicts: number; evidence: number; premises: number; meanings: number; related: number; }
 export interface Dossier {
   version: {
     id: UUID; record_id: UUID; version_no: number; title: string | null; is_current: boolean;
-    current_version_id: UUID | null; version_count: number; parent_version_id: UUID | null;
+    current_version_id: UUID | null; is_stable: boolean; stable_version_id: UUID | null; version_count: number; parent_version_id: UUID | null;
     created_at: ISODateTime; created_by: UUID | null; attributes: Attributes;
     synthetic_demo: boolean; body_sha256: SHA256; body_text: string;
   };

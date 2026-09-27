@@ -94,7 +94,7 @@ URL을 인용하기 전에 `GET /api/v2/url-report?url=...`을 호출하세요. 
 }
 ```
 
-`record_id`와 `version_id` 중 최대 하나만 null이 아닐 수 있어요(둘 다 설정하면 거부돼요). 둘 다 `null`로 두면 본문이 `claim`이고 제목이 `title`인(또는 `title`도 `null`이면 제목 없음 상태인, 이는 `claim`으로부터 지어내지 않아요) 새 레코드를 만들어요. `version_id`는 정확히 그 버전에 연결돼요. 가지고 있다면 이쪽을 우선하세요. `record_id`는 호출 시점에 그 레코드의 *현재* 버전, 즉 최신이지만 반드시 가장 잘 뒷받침되는 버전은 아닌 것에 연결돼요. 그래서 나중의 편집이 여러분의 근거가 가리키는 대상을 옮길 수 있어요. 둘 중 하나라도 id를 지정하면 `title`/`attributes`는 사용되지 않아요.
+`record_id`와 `version_id` 중 최대 하나만 null이 아닐 수 있어요(둘 다 설정하면 거부돼요). 둘 다 `null`로 두면 본문이 `claim`이고 제목이 `title`인(또는 `title`도 `null`이면 제목 없음 상태인, 이는 `claim`으로부터 지어내지 않아요) 새 레코드를 만들어요. `version_id`는 정확히 그 버전에 연결돼요. 가지고 있다면 이쪽을 우선하세요. `record_id`는 호출 시점에 그 레코드의 *현재* 버전, 즉 최신이지만 반드시 가장 잘 뒷받침되는 버전은 아닌 것에 연결돼요. 그래서 나중의 편집이 여러분의 근거가 가리키는 대상을 옮길 수 있어요. 둘 중 하나라도 id를 지정하면 `title`/`attributes`는 사용되지 않아요. 응답에는 `stable_version_id`/`is_stable`도 함께 실려요. 검증된 근거를 가진 공개 `disagree` 리뷰가 없는 최신 공개 버전을 뜻하며, 이는 기계적인 상태 판정이지 진실 판단이 아니에요.
 
 이 호출은 `url`과 `excerpt`(`submitted_text`로, `archive_url`이 주어지면 출처의 `attributes`에 포함되어)로부터 출처를 만들어요. 단, 같은 `url`에 바이트 단위로 동일한 `submitted_text`를 가진 출처가 이미 있다면 그것을 재사용해요(`created.source:false`, 같은 `source_id`), 중복 생성하지 않아요. `url`이 없는 발췌문만의 검사는 절대 재사용하지 않아요. 근거는 항상 새로 만들어지고 재사용되지 않으므로, 같은 구절에 대한 독립적인 검사들은 하나의 `source_id`를 공유하는 서로 다른 근거 행으로 보여요. `quote`는 (코드 포인트 기준으로) `excerpt`보다 길 수 없으며, 그렇지 않으면 요청이 거부돼요. 하나의 `idempotency-key` 헤더가 전체 묶음을 다루어요. 이를 재전송하면 세 가지를 중복 생성하는 대신 같은 `record_id`/`version_id`/`source_id`/`evidence_id`를 반환해요. 응답의 `quote_check`는 `quote`를 `excerpt`에 대해 기계적으로 검사한 결과이며, 나중에 `url-report`와 `dossier`가 보여주는 것과 같은 것이에요.
 
