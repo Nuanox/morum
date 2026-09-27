@@ -101,7 +101,7 @@ DECLARE target jsonb;vid uuid;v knowledge.versions%ROWTYPE;blind boolean;anchor_
  SELECT coalesce(pg_catalog.jsonb_agg(x ORDER BY pv),'[]'::jsonb) INTO premises FROM (
   SELECT pg_catalog.jsonb_build_object('relation_id',d.relation_id,'evidence_id',d.evidence_id,'to',d.tgt,'version_id',d.pv,'title',vv.title,
     'is_current',(d.pv=knowledge.current_version(vv.record_id)),
-    'is_stable',(d.pv=knowledge.stable_version(vv.record_id)),
+    'is_stable',coalesce(d.pv=knowledge.stable_version(vv.record_id),false),
     'status',pg_catalog.jsonb_build_object(
      'corrected',EXISTS(SELECT 1 FROM knowledge.relations rc WHERE rc.predicate='corrects' AND rc.to_version_id=d.pv AND knowledge.is_public('relation',rc.id)),
      'disputed',EXISTS(SELECT 1 FROM knowledge.reviews rv WHERE rv.stance='disagree' AND knowledge.is_public('review',rv.id) AND (
@@ -160,7 +160,7 @@ DECLARE target jsonb;vid uuid;v knowledge.versions%ROWTYPE;blind boolean;anchor_
  RETURN pg_catalog.jsonb_build_object(
   'version',pg_catalog.jsonb_build_object('id',v.id,'record_id',v.record_id,'version_no',v.version_no,'title',v.title,
    'is_current',v.id=knowledge.current_version(v.record_id),'current_version_id',knowledge.current_version(v.record_id),
-   'is_stable',v.id=knowledge.stable_version(v.record_id),'stable_version_id',knowledge.stable_version(v.record_id),'version_count',ver_count,
+   'is_stable',coalesce(v.id=knowledge.stable_version(v.record_id),false),'stable_version_id',knowledge.stable_version(v.record_id),'version_count',ver_count,
    'parent_version_id',v.parent_version_id,'created_at',knowledge.utc(v.created_at),'created_by',v.created_by,'attributes',v.attributes,
    'synthetic_demo',v.synthetic_demo,'body_sha256',v.body_sha256,'body_text',v.body_text),
   'corrections',corrections,
