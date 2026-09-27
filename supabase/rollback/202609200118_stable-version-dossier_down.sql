@@ -1,3 +1,10 @@
+-- Rollback for 202609200118_stable-version-dossier.sql.
+-- Restores the previous canonical body of public.kb_dossier (from git HEAD
+-- at generation time, before this migration's edit to
+-- supabase/functions/kb_dossier.sql) and reverts kb_health's tag to
+-- 'stage13-stable-version'.
+BEGIN;
+
 CREATE OR REPLACE FUNCTION public.kb_dossier(p_query jsonb) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE target jsonb;vid uuid;v knowledge.versions%ROWTYPE;blind boolean;anchor_ids uuid[];
  corrections jsonb;corr_total integer;corr_cap integer=10;
@@ -101,7 +108,6 @@ DECLARE target jsonb;vid uuid;v knowledge.versions%ROWTYPE;blind boolean;anchor_
  SELECT coalesce(pg_catalog.jsonb_agg(x ORDER BY pv),'[]'::jsonb) INTO premises FROM (
   SELECT pg_catalog.jsonb_build_object('relation_id',d.relation_id,'evidence_id',d.evidence_id,'to',d.tgt,'version_id',d.pv,'title',vv.title,
     'is_current',(d.pv=knowledge.current_version(vv.record_id)),
-    'is_stable',(d.pv=knowledge.stable_version(vv.record_id)),
     'status',pg_catalog.jsonb_build_object(
      'corrected',EXISTS(SELECT 1 FROM knowledge.relations rc WHERE rc.predicate='corrects' AND rc.to_version_id=d.pv AND knowledge.is_public('relation',rc.id)),
      'disputed',EXISTS(SELECT 1 FROM knowledge.reviews rv WHERE rv.stance='disagree' AND knowledge.is_public('review',rv.id) AND (
@@ -159,8 +165,7 @@ DECLARE target jsonb;vid uuid;v knowledge.versions%ROWTYPE;blind boolean;anchor_
 
  RETURN pg_catalog.jsonb_build_object(
   'version',pg_catalog.jsonb_build_object('id',v.id,'record_id',v.record_id,'version_no',v.version_no,'title',v.title,
-   'is_current',v.id=knowledge.current_version(v.record_id),'current_version_id',knowledge.current_version(v.record_id),
-   'is_stable',v.id=knowledge.stable_version(v.record_id),'stable_version_id',knowledge.stable_version(v.record_id),'version_count',ver_count,
+   'is_current',v.id=knowledge.current_version(v.record_id),'current_version_id',knowledge.current_version(v.record_id),'version_count',ver_count,
    'parent_version_id',v.parent_version_id,'created_at',knowledge.utc(v.created_at),'created_by',v.created_by,'attributes',v.attributes,
    'synthetic_demo',v.synthetic_demo,'body_sha256',v.body_sha256,'body_text',v.body_text),
   'corrections',corrections,
@@ -170,3 +175,13 @@ DECLARE target jsonb;vid uuid;v knowledge.versions%ROWTYPE;blind boolean;anchor_
   'evidence',evidence,'premises',premises,'meanings',meanings,'related',related,'omitted',omitted,'blind',blind,
   'generated_at',knowledge.utc(pg_catalog.clock_timestamp()));
 END $$;
+
+REVOKE ALL ON FUNCTION public.kb_dossier(jsonb) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.kb_dossier(jsonb) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.kb_health() RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path='' AS $$
+ SELECT pg_catalog.jsonb_build_object('status',CASE WHEN contract_version='2.1.0' AND migration_tag='stage13-stable-version' THEN 'ok' ELSE 'degraded' END,'database','reachable','contract_version',contract_version) FROM knowledge.schema_info WHERE singleton
+$$;
+UPDATE knowledge.schema_info SET migration_tag='stage13-stable-version' WHERE singleton;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA knowledge FROM PUBLIC,anon,authenticated,service_role;
+COMMIT;
