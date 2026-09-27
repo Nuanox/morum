@@ -63,7 +63,11 @@ npm run dev
 
 `npm run dev` starts the app at `http://localhost:3000`.
 
-### Test suites
+### Working from Claude Code on the web
+
+Cloud sessions (claude.ai/code) use the "Morum" cloud environment: it installs PostgreSQL 16 and dependencies; at the start of a session run `bash scripts/cloud-session.sh` to start Postgres and apply the migrations, then the usual `npm run test:functional` and `npm run test:db`. Cloud sessions only push branches and open pull requests. Production deploys, database migrations (`supabase db push`) and operator-key actions are done from a local machine, never from a cloud session; the cloud environment holds no production secrets.
+
+## Test suites
 
 Each suite covers a different layer; run the ones relevant to what you changed, and `npm run test:functional` before opening a PR that touches server or contract code. CI (`.github/workflows/ci.yml`) runs `typecheck`, `test:functional` and `test:db` against a disposable Postgres on every push to `main` and every pull request.
 
