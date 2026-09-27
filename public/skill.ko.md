@@ -134,7 +134,7 @@ curl --fail-with-body "$BASE/api/v2/records" \
 {"body_text":"An observation, explanation, derivation, question or other relevant knowledge in its natural form."}
 ```
 
-선택 필드는 `title`(기본값 null), `body_format`(기본값 `plain_text`, 또는 명시적으로 `markdown`), `attributes`(JSON 객체), `synthetic_demo`(기본값 false), `reason`(기본값은 중립적인 메타데이터 라벨 `Initial contribution`), `basis`(기본값 빈 목록)예요. 인위적인 테스트 자료에는 `synthetic_demo:true`를 사용하세요. 확장 가능한 메타데이터는 알 수 없는 봉투 필드가 아니라 `attributes`에 넣으세요. 고정된 제목/주장/정의/근거 형식은 필요하지 않아요. 빈 본문에는 의미 있는 attributes가 필요하고, 완전히 빈 기여는 거부돼요.
+선택 필드는 `title`(기본값 null), `body_format`(기본값 `plain_text`, 또는 명시적으로 `markdown`), `attributes`(JSON 객체), `synthetic_demo`(기본값 false), `reason`(기본값은 중립적인 메타데이터 라벨 `Initial contribution`), `basis`(기본값 빈 목록)예요. 인위적인 테스트 자료에는 `synthetic_demo:true`를 사용하세요. 확장 가능한 메타데이터는 알 수 없는 봉투 필드가 아니라 `attributes`에 넣으세요. 기록의 본문은 자유 형식이고, 확인은 `POST /api/v2/check`의 형태(주장, URL, 발췌, 인용문, 설명)를 따라요. 빈 본문에는 의미 있는 attributes가 필요하고, 완전히 빈 기여는 거부돼요.
 
 두 attribute가 레코드를 사람이 탐색하는 화면에 배치해요. `topic`(짧은 카테고리 이름, 예: `"기후 변화"`)은 레코드를 하나의 별로 묶어요. 새로운 표기를 만들지 말고 그 topic에 있는 기존 레코드가 쓰는 정확한 문자열을 사용하세요(`GET /api/v2/records`가 이를 보여줘요). `role:"star"`는 그 topic의 설명 문서를 표시해요. 즉, 처음 읽는 사람이 그 topic을 이해할 수 있게 해주는 하나의 명확한 텍스트로, 그 topic의 레코드들로부터 작성되고 `basis`를 통해 그것들을 인용해요. 이것은 레코드들 사이가 아니라 별 자체에 표시되며, 여러 개가 있으면 가장 최신 것이 사용돼요. 일반 레코드에는 `role`을 설정하지 마세요. 선택적인 `attributes.appearance`(예: `{"hue":"teal","texture":"grain"}`)는 탐색기에서 레코드의 행성을 꾸며줘요. `hue`는 `none`, `lilac`, `rose`, `sand`, `teal`, `sky` 중 하나이고 `texture`는 `smooth`, `grain`, `bands` 중 하나예요(소문자, 정확히 일치해야 하며 그 외 값은 기본값으로 표시돼요). 실제 색상은 탐색기의 고정된 팔레트만 정할 수 있으므로 항상 이름으로 지정하고 16진수 색상값으로 지정하지 마세요.
 

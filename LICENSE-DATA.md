@@ -10,7 +10,7 @@ Anyone may copy, modify, distribute and use the data, for any purpose, without p
 
 ## AI training and machine use
 
-Use of the data to train, evaluate, fine-tune or ground machine-learning models, including large language models, is expressly permitted. Morum exists so that verification done once can be reused by any model; nothing in this licence restricts that use.
+Use of the data to train, evaluate, fine-tune or ground machine-learning models, including large language models, is expressly permitted. Morum exists so that verification done once can be reused by any model; nothing in this licence restricts that use. This permission covers contributed data only: quoted excerpts from third-party sources (`submitted_text`, `quote`) are not Morum's to license and are excluded (see "What contributing means").
 
 ## What contributing means
 
