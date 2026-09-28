@@ -7,8 +7,11 @@
 // which buttons exist, the reader, and the chrome. Design: docs/ARCHIVE_DESIGN.md §5, docs/FABLE_UNIVERSE_BRIEF.md.
 import {useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent} from 'react';
 import type {Camera, Circle, UniverseCategory, UniverseItem, UniverseSource, Viewport} from './types';
+import type {UrlReport, UrlReportCitation} from '../../contracts/types';
 import {createTopicSource} from '../../lib/universe-data';
 import {loadSpatialSearch, type SpatialNode} from '../../lib/spatial-data';
+import {apiGet} from '../../lib/api-client';
+import {isUrlQuery} from './url-query';
 import {rootCircle, packChildren, placeOrbits, HOLE_KEY, ORBIT_INNER} from './layout';
 import {worldToScreen, screenToWorld, zoomAt, panBy, fitCircle, interpolate, inertiaStep, clampScale} from './camera';
 import {screenRadius, stageFor, stageScale, isVisible, pickFetchTargets, directionalNode, itemsOpen, STAGE_PX, type Stage, type FetchCandidate} from './lod';
@@ -25,6 +28,8 @@ type PointerState = {id: number; startX: number; startY: number; lastX: number; 
 type PinchState = {dist: number; mid: {x: number; y: number}};
 type Highlight = {itemId: string; until: number};
 type SuggestRow = {node: SpatialNode; categoryId: string; starLabel: string};
+/** The url-report card's state for the URL the search box currently holds (see url-query.ts). */
+type UrlReportState = {status: 'loading' | 'ready' | 'error'; report: UrlReport | null; url: string};
 
 const DRAG_THRESHOLD = 7;
 const STILL_MS = 120;
@@ -98,6 +103,13 @@ const ZOOM_SMOOTHING = 0.28;
 
 function itemKey(categoryId: string, itemId: string): string { return `${categoryId}::${itemId}`; }
 function splitItemKey(key: string): [string, string] { const i = key.indexOf('::'); return [key.slice(0, i), key.slice(i + 2)]; }
+/** A url-report citation's own link, preferring the version it names (a `links` field would win if the
+ * contract ever adds one — it does not today) and falling back to the record it belongs to. */
+function citationHref(citation: UrlReportCitation): string | null {
+  if (citation.version_id) return `/versions/${encodeURIComponent(citation.version_id)}`;
+  if (citation.record_id) return `/records/${encodeURIComponent(citation.record_id)}`;
+  return null;
+}
 /** Untitled records are labelled by the first 18 code points of their opening text, cut at a word boundary,
  * with no trailing "…" (4-3: an ellipsis reads as something hidden; the field is not a table of contents).
  * Titled records keep their title as-is, but a trailing sentence period is dropped (the field label is not a
@@ -203,6 +215,7 @@ export default function Universe({initialDoc}: {initialDoc?: string} = {}) {
   const suggestionsRef = useRef<SuggestRow[]>([]);
   const inputFocusedRef = useRef(false);
   const queryRef = useRef('');
+  const urlReportControllerRef = useRef<AbortController | null>(null);
 
   const [domCategoryIds, setDomCategoryIds] = useState<string[]>([]);
   const [domItemKeys, setDomItemKeys] = useState<string[]>([]);
@@ -221,6 +234,10 @@ export default function Universe({initialDoc}: {initialDoc?: string} = {}) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<SuggestRow[]>([]);
   const [highlightIndex, setHighlightIndex] = useState(-1);
+  const [urlReport, setUrlReport] = useState<UrlReportState | null>(null);
+  /** Escape dismisses the url-report card without clearing the typed URL (mirrors clearing the suggestion
+   * list); the next keystroke reopens it, same as suggestions reappearing once retyped. */
+  const [urlCardClosed, setUrlCardClosed] = useState(false);
   const [reader, setReader] = useState<ReaderTarget | null>(null);
   // Opening a document closes the desktop pill outright, so closing the reader comes back to the plain field.
   useEffect(() => {
@@ -1105,10 +1122,39 @@ export default function Universe({initialDoc}: {initialDoc?: string} = {}) {
     } catch { if (!controller.signal.aborted) setSuggestionsBoth([]); }
   }
 
-  /** Debounced entry point for the suggestion list: cleared below the minimum character count. */
+  /** The url-report card's own debounced lookup: `GET /url-report?url=` for the query the box currently
+   * holds, guarded against races the same way runSuggest is (abort the previous call, ignore a stale
+   * response). Never a truth verdict either — see the ArchiveCheck/QuoteCheck comments in contracts/types.ts. */
+  async function runUrlReport(url: string): Promise<void> {
+    urlReportControllerRef.current?.abort();
+    const controller = new AbortController();
+    urlReportControllerRef.current = controller;
+    setUrlReport({status: 'loading', report: null, url});
+    try {
+      const report = await apiGet<UrlReport>(`/url-report?url=${encodeURIComponent(url)}`, controller.signal);
+      if (controller.signal.aborted || !mountedRef.current) return;
+      setUrlReport({status: 'ready', report, url});
+    } catch {
+      if (!controller.signal.aborted) setUrlReport({status: 'error', report: null, url});
+    }
+  }
+
+  /** Debounced entry point for the suggestion list (cleared below the minimum character count) and, when
+   * the query looks like a URL (owner decision 2026-09-28), for the url-report card instead — same debounce
+   * timing, and the two are mutually exclusive: a URL query never runs the record search. */
   function scheduleSuggest(text: string): void {
     if (searchDebounceRef.current) { clearTimeout(searchDebounceRef.current); searchDebounceRef.current = null; }
+    setUrlCardClosed(false);
     const trimmed = text.trim();
+    const asUrl = isUrlQuery(trimmed);
+    if (asUrl) {
+      suggestControllerRef.current?.abort();
+      setSuggestionsBoth([]);
+      setHighlightIndex(-1);
+      searchDebounceRef.current = setTimeout(() => { searchDebounceRef.current = null; void runUrlReport(asUrl); }, SUGGEST_DEBOUNCE_MS);
+      return;
+    }
+    if (urlReport !== null) { urlReportControllerRef.current?.abort(); setUrlReport(null); }
     if (trimmed.length < SUGGEST_MIN_CHARS) {
       suggestControllerRef.current?.abort();
       setSuggestionsBoth([]);
@@ -1357,6 +1403,7 @@ export default function Universe({initialDoc}: {initialDoc?: string} = {}) {
       if (domTimerRef.current) clearTimeout(domTimerRef.current);
       for (const c of fetchControllersRef.current) c.abort();
       searchControllerRef.current?.abort();
+      urlReportControllerRef.current?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1481,8 +1528,10 @@ export default function Universe({initialDoc}: {initialDoc?: string} = {}) {
   function onSearchKeyDown(event: ReactKeyboardEvent<HTMLInputElement>): void {
     if (event.key === 'Escape') {
       event.preventDefault(); event.stopPropagation();
-      // Escape closes the suggestion list first; a second Escape hides the pill (desktop only — the docked pill stays).
+      // Escape closes the suggestion list first (or the url-report card); a second Escape hides the pill
+      // (desktop only — the docked pill stays).
       if (suggestionsRef.current.length > 0) { setSuggestionsBoth([]); setHighlightIndex(-1); return; }
+      if (isUrlQuery(query.trim()) && !urlCardClosed) { setUrlCardClosed(true); return; }
       if (!alwaysVisible) closeSearch();
       return;
     }
@@ -1498,6 +1547,12 @@ export default function Universe({initialDoc}: {initialDoc?: string} = {}) {
     }
     if (event.key !== 'Enter' || event.nativeEvent.isComposing || composing) return;
     event.preventDefault();
+    if (!urlCardClosed && isUrlQuery(query.trim())) {
+      const first = urlReport?.status === 'ready' ? urlReport.report?.citations[0] : null;
+      const href = first ? citationHref(first) : null;
+      if (href) window.location.assign(href);
+      return;
+    }
     const list = suggestionsRef.current;
     if (list.length > 0) { void chooseSuggestion(list[highlightIndex >= 0 && highlightIndex < list.length ? highlightIndex : 0]); return; }
     const trimmed = query.trim();
@@ -1532,14 +1587,70 @@ export default function Universe({initialDoc}: {initialDoc?: string} = {}) {
     );
   }
 
+  /** Quote-check counts, `found` combining every found_* bucket (owner decision 2026-09-28: the
+   * distinction matters to the checker, not to a person glancing at the card). */
+  function quoteFoundCount(report: UrlReport): number {
+    const q = report.counts.quote_states;
+    return q.found_exact + q.found_normalized + q.found_fragments;
+  }
+
+  function renderUrlCard(displayUrl: string) {
+    const state = urlReport;
+    const report = state?.status === 'ready' ? state.report : null;
+    const encoded = encodeURIComponent(displayUrl);
+    return (
+      <div className="universe-suggestions universe-url-card" id={suggestListId} role="status">
+        <p className="universe-url-header">{displayUrl}</p>
+        {(!state || state.status === 'loading') && <p className="universe-url-status">조회 중…</p>}
+        {state?.status === 'error' && <p className="universe-url-status">조회하지 못했습니다</p>}
+        {report && (
+          <>
+            <p className="universe-url-status">
+              {report.counts.sources > 0 || report.counts.citations > 0 ? '확인 기록 있음' : '확인된 적 없음 — 문제없음이라는 뜻은 아닙니다'}
+            </p>
+            {(report.counts.sources > 0 || report.counts.citations > 0) && (
+              <>
+                <p className="universe-url-line">출처 {report.counts.sources} · 인용 {report.counts.citations} · 정정 {report.counts.corrections}</p>
+                <p className="universe-url-line">인용문 대조 found {quoteFoundCount(report)} · not_found {report.counts.quote_states.not_found}</p>
+                {report.counts.archive_states && (
+                  <p className="universe-url-line">
+                    보관본 대조 found {report.counts.archive_states.found} · not_found {report.counts.archive_states.not_found} · 스냅샷 없음 {report.counts.archive_states.no_snapshot}
+                  </p>
+                )}
+                {report.citations.slice(0, 2).map(citation => {
+                  const href = citationHref(citation);
+                  const body = (
+                    <>
+                      <span className="universe-url-citation-quote">{citation.quote || citation.explanation}</span>
+                      <span className="universe-url-citation-title">{citation.title?.trim() || '(제목 없음)'}</span>
+                    </>
+                  );
+                  return (
+                    <p className="universe-url-citation" key={citation.evidence_id}>
+                      {href ? <a href={href}>{body}</a> : body}
+                    </p>
+                  );
+                })}
+              </>
+            )}
+          </>
+        )}
+        <p className="universe-url-line">
+          <a href={`/api/v2/url-report?url=${encoded}`} target="_blank" rel="noreferrer">API로 보기</a>
+        </p>
+      </div>
+    );
+  }
+
   function renderSearchPill() {
+    const urlQuery = urlCardClosed ? null : isUrlQuery(query.trim());
     return (
       <div className="universe-search" data-hidden={dockHidden}
         onMouseEnter={alwaysVisible ? undefined : revealSearch}
         onMouseLeave={alwaysVisible ? undefined : onSearchHoverLeave}>
         <label className="universe-sr-only" htmlFor="universe-query">우주 검색</label>
-        <input id="universe-query" ref={searchInputRef} value={query} autoComplete="off" placeholder="검색"
-          role="combobox" aria-expanded={suggestions.length > 0} aria-controls={suggestListId} aria-autocomplete="list"
+        <input id="universe-query" ref={searchInputRef} value={query} autoComplete="off" placeholder="검색 또는 URL"
+          role="combobox" aria-expanded={suggestions.length > 0 || urlQuery !== null} aria-controls={suggestListId} aria-autocomplete="list"
           aria-activedescendant={highlightIndex >= 0 ? `universe-suggestion-${highlightIndex}` : undefined}
           onChange={event => { const value = event.target.value; queryRef.current = value; setQuery(value); scheduleSuggest(value); }}
           onFocus={() => {
@@ -1553,12 +1664,15 @@ export default function Universe({initialDoc}: {initialDoc?: string} = {}) {
             setInputFocused(false);
             setSuggestionsBoth([]);
             setHighlightIndex(-1);
+            urlReportControllerRef.current?.abort();
+            setUrlReport(null);
+            setUrlCardClosed(false);
             if (!alwaysVisible) scheduleAutoHide();
           }}
           onCompositionStart={() => setComposing(true)}
           onCompositionEnd={event => { setComposing(false); const value = event.currentTarget.value; queryRef.current = value; setQuery(value); scheduleSuggest(value); }}
           onKeyDown={onSearchKeyDown} />
-        {suggestions.length > 0 && renderSuggestions()}
+        {urlQuery ? renderUrlCard(urlQuery) : suggestions.length > 0 && renderSuggestions()}
       </div>
     );
   }
