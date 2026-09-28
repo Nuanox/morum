@@ -1,0 +1,41 @@
+name: Archive check
+
+# Daily background job (after the 18:00 UTC backup): compares each pending evidence quote
+# against its nearest web.archive.org snapshot and stores the result via the operator API.
+# Never touches the origin site -- see scripts/archive-check.mjs and README.md rule 5.
+on:
+  schedule:
+    - cron: '0 19 * * *' # 19:00 UTC, one hour after the backup workflow
+  workflow_dispatch:
+
+concurrency:
+  group: archive-check
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  archive-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required secrets
+        run: |
+          if [ -z "${{ secrets.MORUM_OPERATOR_KEY }}" ]; then
+            echo "::error::MORUM_OPERATOR_KEY secret is not set. Add it in repo Settings > Secrets and variables > Actions (an operator key from scripts/moderate.mjs enroll, granted via knowledge.operators)." >&2
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - run: npm ci
+
+      - name: Run archive-check job
+        env:
+          MORUM_OPERATOR_KEY: ${{ secrets.MORUM_OPERATOR_KEY }}
+          MORUM_BASE: https://morum.vercel.app
+        run: node scripts/archive-check.mjs
