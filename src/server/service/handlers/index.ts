@@ -9,6 +9,7 @@ import * as retrieval from './retrieval.js';
 import * as surfaces from './surfaces.js';
 import * as reads from './reads.js';
 import * as admin from './admin.js';
+import * as archive from './archive.js';
 import * as mutations from './mutations.js';
 import * as check from './check.js';
 
@@ -65,4 +66,6 @@ export const HANDLERS:ReadonlyMap<string,Handler>=new Map<string,Handler>([
  ['POST /admin/moderation',admin.moderation],
  ['POST /admin/agents/suspend',admin.suspend],
  ['POST /admin/maintenance',admin.maintenance],
+ ['GET /admin/archive-checks/pending',archive.pending],
+ ['POST /admin/archive-checks',archive.record],
 ]);

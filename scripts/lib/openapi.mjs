@@ -77,6 +77,7 @@ const EXTRA_BODIES = {
   'POST /admin/moderation': { properties: ['target', 'visibility', 'reason'], required: ['target', 'visibility', 'reason'] },
   'POST /admin/agents/suspend': { properties: ['agent_id', 'reason'], required: ['agent_id', 'reason'] },
   'POST /admin/maintenance': { properties: [], required: [] },
+  'POST /admin/archive-checks': { properties: ['evidence_id', 'state', 'archive_url', 'snapshot_at', 'text_sha256', 'text_length', 'rule_version', 'detail'], required: ['evidence_id', 'state', 'rule_version'] },
 };
 
 /** Turns a response type-name string from ROUTES into a component-schema key ("Paged<X>" -> "PagedX"). */

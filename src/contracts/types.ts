@@ -302,11 +302,19 @@ export interface UrlReportSource {
   retrieved_at: ISODateTime | null; has_text: boolean; created_by: UUID | null;
   created_at: ISODateTime; review_summary: ReviewSummary;
 }
+/** State of a background job's comparison of a quote against a third-party (web.archive.org)
+ * snapshot; a mechanical variant of QuoteCheckState against a copy the agent did not submit
+ * itself. Never a truth verdict -- see supabase/migrations/202609200119_archive_check.sql. */
+export type ArchiveCheckState = "found_exact" | "found_normalized" | "found_fragments" | "not_found" | "no_snapshot" | "fetch_failed";
+export interface ArchiveCheck {
+  state: ArchiveCheckState; archive_url: string | null; snapshot_at: ISODateTime | null;
+  checked_at: ISODateTime; rule_version: string;
+}
 export interface UrlReportCitation {
   evidence_id: UUID; source_id: UUID; target: ContentRef; record_id: UUID | null;
   version_id: UUID | null; title: string | null; is_current: boolean | null;
   is_stable: boolean | null; stable_version_id: UUID | null;
-  quote: string | null; explanation: string; quote_check: QuoteCheck; created_at: ISODateTime;
+  quote: string | null; explanation: string; quote_check: QuoteCheck; archive_check: ArchiveCheck | null; created_at: ISODateTime;
 }
 export interface UrlReportCorrection {
   relation_id: UUID; correcting: ContentRef; corrected: ContentRef;
@@ -318,6 +326,7 @@ export interface UrlReport {
   counts: {
     sources: number; citations: number; corrections: number;
     quote_states: { found_exact: number; found_normalized: number; found_fragments: number; not_found: number; no_text: number; no_quote: number };
+    archive_states: { found: number; not_found: number; no_snapshot: number; unchecked: number };
   };
   truncated: { sources: boolean; citations: boolean; corrections: boolean };
   generated_at: ISODateTime;
@@ -327,7 +336,7 @@ export interface DossierCorrection { relation_id: UUID; from: ContentRef; versio
 export type DossierReviewRef = ContentRef & { exact?: string; start?: number; end?: number };
 export interface DossierCounterargument { id: UUID; stance: ReviewStance; focus: ReviewFocus; on: DossierReviewRef; created_by: UUID | null; created_at: ISODateTime; declared: DeclaredAgent | null; explanation: string; }
 export interface DossierContradiction { relation_id: UUID; from: ContentRef; version_id: UUID | null; title: string | null; explanation: string; created_at: ISODateTime; }
-export interface DossierEvidence extends Evidence { quote_check: QuoteCheck; }
+export interface DossierEvidence extends Evidence { quote_check: QuoteCheck; archive_check: ArchiveCheck | null; }
 export interface DossierPremise { relation_id: UUID; evidence_id: UUID; to: ContentRef; version_id: UUID | null; title: string | null; is_current: boolean | null; is_stable: boolean | null; status: { corrected: boolean; disputed: boolean }; }
 export interface DossierMeaning { annotation_id: UUID; anchor_id: UUID; start: number; end: number; exact: string; meaning: string; concept_version_id: UUID | null; created_at: ISODateTime; }
 export interface DossierRelated { relation_id: UUID; predicate: string; direction: "in" | "out"; other: ContentRef; title: string | null; explanation: string; created_at: ISODateTime; }
@@ -363,6 +372,22 @@ export interface AttentionItem {
 }
 export interface AttentionList {
   items: AttentionItem[]; counts: Partial<Record<AttentionReason, number>>; generated_at: ISODateTime;
+}
+/** GET /admin/archive-checks/pending item: external evidence with a quote and a source URL that
+ * has never been archive-checked, or whose newest check was fetch_failed more than 7 days ago. */
+export interface ArchiveCheckPendingItem {
+  evidence_id: UUID; quote: string; url: string;
+  retrieved_at: ISODateTime | null; published_at: ISODateTime | null; archive_url_hint: string | null;
+}
+export interface ArchiveChecksPending { items: ArchiveCheckPendingItem[]; }
+/** POST /admin/archive-checks body: the background job's own comparison result for one evidence. */
+export interface RecordArchiveCheckRequest {
+  evidence_id: UUID; state: ArchiveCheckState; archive_url: string | null; snapshot_at: ISODateTime | null;
+  text_sha256: string | null; text_length: number | null; rule_version: string; detail: string | null;
+}
+export interface ArchiveCheckRecord {
+  id: UUID; evidence_id: UUID; state: ArchiveCheckState; archive_url: string | null; snapshot_at: ISODateTime | null;
+  text_sha256: string | null; text_length: number | null; rule_version: string; detail: string | null; created_at: ISODateTime;
 }
 export type ErrorCode =
   "INVALID_JSON" | "VALIDATION_FAILED" | "INVALID_TEXT" | "INVALID_LINE_ENDINGS" |

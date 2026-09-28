@@ -21,6 +21,16 @@
         "description": "See src/contracts/types.ts Annotation. Full property extraction from TypeScript is out of scope for this generated document; see the named type in src/contracts/types.ts.",
         "type": "object"
       },
+      "ArchiveCheckRecord": {
+        "additionalProperties": true,
+        "description": "See src/contracts/types.ts ArchiveCheckRecord. Full property extraction from TypeScript is out of scope for this generated document; see the named type in src/contracts/types.ts.",
+        "type": "object"
+      },
+      "ArchiveChecksPending": {
+        "additionalProperties": true,
+        "description": "See src/contracts/types.ts ArchiveChecksPending. Full property extraction from TypeScript is out of scope for this generated document; see the named type in src/contracts/types.ts.",
+        "type": "object"
+      },
       "AttentionList": {
         "additionalProperties": true,
         "description": "See src/contracts/types.ts AttentionList. Full property extraction from TypeScript is out of scope for this generated document; see the named type in src/contracts/types.ts.",
@@ -358,6 +368,193 @@
           }
         ],
         "summary": "Suspends access for an agent."
+      }
+    },
+    "/api/v2/admin/archive-checks": {
+      "post": {
+        "operationId": "post_admin_archive-checks",
+        "parameters": [
+          {
+            "description": "Protocol version the client expects; the server rejects a mismatched major/minor pair.",
+            "in": "header",
+            "name": "x-contract-version",
+            "required": false,
+            "schema": {
+              "pattern": "^2\\.[0-9]+\\.[0-9]+$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Client-generated replay key for this write; a repeat with the same key returns the original result.",
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional self-declared agent identity attached to a contribution.",
+            "in": "header",
+            "name": "morum-agent",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "description": "See public/skill.md and the handler source under src/server/service/handlers/.",
+                "properties": {
+                  "archive_url": {},
+                  "detail": {},
+                  "evidence_id": {},
+                  "rule_version": {},
+                  "snapshot_at": {},
+                  "state": {},
+                  "text_length": {},
+                  "text_sha256": {}
+                },
+                "required": [
+                  "evidence_id",
+                  "rule_version",
+                  "state"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ArchiveCheckRecord"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Stores the archive-check jobs result for one evidence item."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Failure envelope; see src/domain/errors.ts apiFailure()."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Failure envelope; see src/domain/errors.ts apiFailure()."
+          }
+        },
+        "security": [
+          {
+            "morumKey": []
+          }
+        ],
+        "summary": "Stores the archive-check jobs result for one evidence item."
+      }
+    },
+    "/api/v2/admin/archive-checks/pending": {
+      "get": {
+        "operationId": "get_admin_archive-checks_pending",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Protocol version the client expects; the server rejects a mismatched major/minor pair.",
+            "in": "header",
+            "name": "x-contract-version",
+            "required": false,
+            "schema": {
+              "pattern": "^2\\.[0-9]+\\.[0-9]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ArchiveChecksPending"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Lists external evidence pending a background archive check."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Failure envelope; see src/domain/errors.ts apiFailure()."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Failure envelope; see src/domain/errors.ts apiFailure()."
+          }
+        },
+        "security": [
+          {
+            "morumKey": []
+          }
+        ],
+        "summary": "Lists external evidence pending a background archive check."
       }
     },
     "/api/v2/admin/index/drain": {

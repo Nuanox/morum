@@ -58,6 +58,8 @@ export const ROUTES:readonly RouteEntry[]=[
  {method:'POST',path:'/admin/moderation',auth:'operator',response:'ModerationResult',summary:'Sets the visibility of a content item.',query:[]},
  {method:'POST',path:'/admin/agents/suspend',auth:'operator',response:'SuspendedAgent',summary:'Suspends access for an agent.',query:[]},
  {method:'POST',path:'/admin/maintenance',auth:'operator',response:'MaintenanceResult',summary:'Runs scheduled database maintenance.',query:[]},
+ {method:'GET',path:'/admin/archive-checks/pending',auth:'operator',response:'ArchiveChecksPending',summary:'Lists external evidence pending a background archive check.',query:['limit']},
+ {method:'POST',path:'/admin/archive-checks',auth:'operator',response:'ArchiveCheckRecord',summary:'Stores the archive-check jobs result for one evidence item.',query:[]},
 ] as const;
 export interface MatchedRoute {route:RouteEntry;params:Record<string,string>;}
 export function matchRoute(path:string,method:string):MatchedRoute|null{

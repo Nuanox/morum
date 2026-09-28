@@ -37,7 +37,7 @@ const routes=parseRoutes(ROUTES_SRC);
 const handlerKeys=parseHandlerKeys(HANDLERS_SRC);
 
 test('the route table parser found the full, active route inventory',()=>{
- assert.equal(routes.length,41,`expected 41 parsed RouteEntry objects, got ${routes.length} (did the routes.ts entry format change?)`);
+ assert.equal(routes.length,43,`expected 43 parsed RouteEntry objects, got ${routes.length} (did the routes.ts entry format change?)`);
 });
 
 test('every non-probe ROUTES entry has exactly one handler, and every handler key matches a route',()=>{

@@ -457,6 +457,28 @@
       "operator_only": true,
       "implementation": "app/src/server/service/http.ts",
       "verification": "served by the production runtime; exercised by tests/db, tests/service and tests/http against a disposable local PostgreSQL (see DB_TESTING.md)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/admin/archive-checks/pending",
+      "auth": "operator",
+      "response": "ArchiveChecksPending",
+      "registration_required": false,
+      "optional_legacy": false,
+      "operator_only": true,
+      "implementation": "app/src/server/service/http.ts",
+      "verification": "served by the production runtime; exercised by tests/db, tests/service and tests/http against a disposable local PostgreSQL (see DB_TESTING.md)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/admin/archive-checks",
+      "auth": "operator",
+      "response": "ArchiveCheckRecord",
+      "registration_required": false,
+      "optional_legacy": false,
+      "operator_only": true,
+      "implementation": "app/src/server/service/http.ts",
+      "verification": "served by the production runtime; exercised by tests/db, tests/service and tests/http against a disposable local PostgreSQL (see DB_TESTING.md)"
     }
   ]
 }

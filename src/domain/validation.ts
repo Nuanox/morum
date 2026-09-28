@@ -137,3 +137,19 @@ export function validateCheckRequest(value:unknown):T.CheckRequest {
  date(o.published_at);date(o.retrieved_at);text(o.archive_url,2048,1,true);attributes(o.attributes);
  return o as unknown as T.CheckRequest;
 }
+/** POST /admin/archive-checks body: the background job's own comparison result (never fetched or
+ * re-derived server-side). Mirrors the CHECK values enforced again by public.kb_record_archive_check. */
+const ARCHIVE_CHECK_FIELDS=['evidence_id','state','archive_url','snapshot_at','text_sha256','text_length','rule_version','detail'] as const;
+const ARCHIVE_CHECK_STATES=['found_exact','found_normalized','found_fragments','not_found','no_snapshot','fetch_failed'] as const;
+export function validateRecordArchiveCheckRequest(value:unknown):T.RecordArchiveCheckRequest {
+ const o=object(value,ARCHIVE_CHECK_FIELDS,['evidence_id','state','rule_version']);
+ uuid(o.evidence_id);one(o.state,ARCHIVE_CHECK_STATES);
+ if(o.archive_url===undefined)o.archive_url=null;
+ if(o.archive_url!==null){text(o.archive_url,2048,1);ensure((o.archive_url as string).startsWith('https://web.archive.org/web/'));}
+ if(o.snapshot_at===undefined)o.snapshot_at=null;date(o.snapshot_at);
+ if(o.text_sha256===undefined)o.text_sha256=null;if(o.text_sha256!==null)hash(o.text_sha256);
+ if(o.text_length===undefined)o.text_length=null;if(o.text_length!==null)integer(o.text_length,0);
+ text(o.rule_version,64);
+ if(o.detail===undefined)o.detail=null;text(o.detail,500,0,true);
+ return o as unknown as T.RecordArchiveCheckRequest;
+}
