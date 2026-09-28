@@ -1,3 +1,10 @@
+-- Rollback for 202609200120_archive-check-dossier.sql.
+-- Restores the previous canonical body of public.kb_dossier (from git HEAD
+-- at generation time, before this migration's edit to
+-- supabase/functions/kb_dossier.sql) and reverts kb_health's tag to
+-- 'stage15-archive-check'.
+BEGIN;
+
 CREATE OR REPLACE FUNCTION public.kb_dossier(p_query jsonb) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE target jsonb;vid uuid;v knowledge.versions%ROWTYPE;blind boolean;anchor_ids uuid[];
  corrections jsonb;corr_total integer;corr_cap integer=10;
@@ -84,7 +91,7 @@ DECLARE target jsonb;vid uuid;v knowledge.versions%ROWTYPE;blind boolean;anchor_
 
  SELECT count(*) INTO evidence_total FROM knowledge.evidence ev WHERE (ev.target_version_id=vid OR ev.target_anchor_id=ANY(anchor_ids)) AND knowledge.is_public('evidence',ev.id);
  SELECT coalesce(pg_catalog.jsonb_agg(x ORDER BY ca),'[]'::jsonb) INTO evidence FROM (
-  SELECT knowledge.dto('evidence',ev.id)||pg_catalog.jsonb_build_object('quote_check',knowledge.evidence_quote_check(ev),'archive_check',knowledge.evidence_archive_check(ev)) x,ev.created_at ca
+  SELECT knowledge.dto('evidence',ev.id)||pg_catalog.jsonb_build_object('quote_check',knowledge.evidence_quote_check(ev)) x,ev.created_at ca
   FROM knowledge.evidence ev WHERE (ev.target_version_id=vid OR ev.target_anchor_id=ANY(anchor_ids)) AND knowledge.is_public('evidence',ev.id)
   ORDER BY ev.created_at LIMIT evidence_cap
  ) t;
@@ -170,3 +177,13 @@ DECLARE target jsonb;vid uuid;v knowledge.versions%ROWTYPE;blind boolean;anchor_
   'evidence',evidence,'premises',premises,'meanings',meanings,'related',related,'omitted',omitted,'blind',blind,
   'generated_at',knowledge.utc(pg_catalog.clock_timestamp()));
 END $$;
+
+REVOKE ALL ON FUNCTION public.kb_dossier(jsonb) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.kb_dossier(jsonb) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.kb_health() RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path='' AS $$
+ SELECT pg_catalog.jsonb_build_object('status',CASE WHEN contract_version='2.1.0' AND migration_tag='stage15-archive-check' THEN 'ok' ELSE 'degraded' END,'database','reachable','contract_version',contract_version) FROM knowledge.schema_info WHERE singleton
+$$;
+UPDATE knowledge.schema_info SET migration_tag='stage15-archive-check' WHERE singleton;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA knowledge FROM PUBLIC,anon,authenticated,service_role;
+COMMIT;
