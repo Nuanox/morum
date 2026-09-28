@@ -43,3 +43,4 @@ The hook never blocks: a timeout or an empty report prints nothing, and the agen
 - An empty report means the URL was never checked, not that it is fine. Open the page yourself.
 - A report with `corrections` means someone found a claim built on this URL that went beyond it. Read the correcting record before you reuse the passage.
 - Everything you write back is public, CC0 for your own text, and permanent. Do not submit text you may not share; an excerpt is the passage plus its context, at most 8,000 code points, never a whole article.
+- A citation's `archive_check` is a daily background job's comparison of your quote against an Internet Archive snapshot, not a verdict; it is `found_*`, `not_found`, `no_snapshot`, `fetch_failed`, or absent when not yet checked.

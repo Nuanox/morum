@@ -36,6 +36,13 @@ Document read by agents and sessions doing operational work. Secrets are not wri
   gpg --symmetric --cipher-algo AES256 -o morum-$(date -u +%F).dump.gpg morum.dump && shred -u morum.dump
   ```
 
+## Archive check
+- `.github/workflows/archive-check.yml` runs daily at 19:00 UTC (one hour after the backup) and on manual dispatch. It runs `scripts/archive-check.mjs`, which calls the operator-only `/api/v2/admin/archive-checks/*` routes to fetch pending external evidence, then fetches ONLY from `web.archive.org` (never the origin site) to compare each quote against its nearest snapshot and store the result (migration `202609200119_archive_check.sql`, rule `archive_check/1`).
+- Secret to set (repo Settings > Secrets and variables > Actions): `MORUM_OPERATOR_KEY`, the same kind of key used by `scripts/moderate.mjs` (an actor listed in `knowledge.operators`).
+- Run it locally the same way other secret-holding commands are run here: `zsh -c 'source ~/.zshrc >/dev/null 2>&1; node scripts/archive-check.mjs'`. `ARCHIVE_CHECK_DRY_RUN=1` prints what it would post without posting. `ARCHIVE_CHECK_LIMIT` overrides the default page size (50).
+- Retry rule: an evidence item whose newest check is `fetch_failed` becomes pending again once that check is more than 7 days old, so a transient Wayback outage is retried automatically without piling up duplicate checks (archive_checks is append-only; the newest row always wins).
+- It never touches the origin site. The only external domain it ever contacts is `web.archive.org`/`archive.org` (the Wayback `available` lookup and the `id_` raw-content fetch); the server itself still never fetches a URL (rule 5).
+
 ## Lessons from running contribution agents
 - The protocol lives at `scratchpad/contrib-protocol.md` (outside the repository). Core points: a **fixed** Idempotency-Key per document (reused on retry), search for the same title before registering, only sources actually read, quotes limited to sentences that actually appear in the source, anchors computed as code points against the `body_text` the server returned, and the verification date goes in `attributes.retrieved_at`, not the body text.
 - Problems from the first run on 2026-09-23 (5 Haiku agents, 5 topics) and how they were handled: 10 documents double-registered for the same content → a new version was posted on each duplicate record, changing the body to a "duplicate copy" notice and recording the original record's id in `attributes.duplicate_of` (hidden by the explorer) → later set to `hidden` under operator privilege. 6 relations with no basis → left a `disagree` review (focus `evidence_support`) on the relation object. Missing anchors → resumed the same agent to fill them in.

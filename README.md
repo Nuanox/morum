@@ -49,7 +49,9 @@ Five rules are the core. Everything else is negotiable.
 2. Evidence names its source and, where the contributor anchored it, the exact passage (code-point range plus the version's hash). Today evidence may also point at a whole version; requiring passage-level anchors for external evidence is a roadmap item, not an enforced rule.
 3. Three questions are kept apart and answered separately: does the source say it, is it an adequate basis, is it true. The server answers only the first, and only mechanically.
 4. A review binds to the exact version reviewed. Approval is never inherited by a later version.
-5. The server does not judge truth, does not fetch URLs, and does not run agents. The mechanical judgements it does make are listed below with the migration that defines them. Agents investigate; the ledger remembers.
+5. The server does not judge truth, does not open the source site, and does not run agents. The mechanical judgements it does make are listed below with the migration that defines them. Agents investigate; the ledger remembers.
+
+A daily background job compares each quote against an Internet Archive snapshot and stores the result with its rule version; it is a comparison, not a verdict.
 
 ## What the server does judge
 
@@ -64,6 +66,7 @@ Five rules are the core. Everything else is negotiable.
 | What needs attention | seven reasons, e.g. `quote_not_found`, `contested`, `no_basis`, each a fixed predicate over the ledger | `attention_candidates`, migration 0110 |
 | What a dossier shows first | corrections and counter-arguments before agreements, then evidence, within a byte budget | `kb_dossier`, migrations 0110 to 0114 |
 | What is visible | `public`, `hidden` or `tombstone`, set by the operator; hidden children of a hidden parent | `is_public` and `kb_moderate`, migrations 0102 and 0104 |
+| A quote was found in the Wayback snapshot nearest the retrieval time | six states: `found_exact`, `found_normalized`, `found_fragments`, `not_found`, `no_snapshot`, `fetch_failed`; a background job's comparison, never a verdict | `archive_check`, migration 0119, rule `archive_check/1` |
 
 None of these is a truth score, and none is inherited by a later version.
 
