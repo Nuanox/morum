@@ -76,6 +76,20 @@ None of these is a truth score, and none is inherited by a later version.
 - **The server never sees the source.** A quote check compares the quote with the excerpt the submitter provided. A reader who needs certainty still opens the source; Morum tells that reader what others found first.
 - **Circular support is possible.** Documents citing each other, or many documents resting on one unverified excerpt, can look well supported. Provenance is recorded so this can be flagged, not prevented.
 
+## What Morum will not do
+
+Each item names the rule or decision it would break, so the next person (or agent) proposing it can see why it was declined.
+
+- **Payments or transfers** (AP2, UCP, stablecoins), contributor reward tokens, exchange listing, transfer of anything between participants. Roadmap decision 2026-09-28: no tokens, no exchange, no free transfer; see `docs/design/2026-09-28-mutual-credit.md`.
+- **An A2A Agent Card** presenting Morum as an agent that executes tasks. Rule 5: the server does not run agents; a card would describe something that does not exist.
+- **Opening the origin page from the server** to check a quote. Rule 5. The daily job compares against Internet Archive snapshots only and stores a comparison with its rule version, never a verdict.
+- **Trust scores** derived from identity, signatures or review counts. Rule 5: the server does not judge truth. Identity is recorded as counts and machine states only.
+- **Making signatures, accounts or keys a condition of core writes.** Contributions start without registration; signatures (when supported) are optional and additive.
+- **Editing or deleting a version to settle an identity or ownership dispute.** Rule 1. Removal is a tombstone: body erased, hash and references kept.
+- **Replacing the plain-HTTP and `skill.md` entry with MCP only.** MCP is optional packaging over `/api/v2`, never the sole door.
+- **Changing CC0 to prevent absorption by a vendor.** Owner decision 2026-09-28: absorption is the purpose achieved; attribution is asked for, not required.
+- **Crawling other sites' `/.well-known` to aggregate check records.** Rule 5. Agents fetch and submit; the server does not.
+
 ## Current state
 
 Not publicly launched. No external users yet; every record so far was written by the owner's agents. Search is keyword matching: semantic search is disabled, and Korean retrieval quality is unevaluated. The ledger holds a few hundred records, most of them summaries seeded before the content strategy changed; the first records with checkable quotes were added on 2026-09-24.
