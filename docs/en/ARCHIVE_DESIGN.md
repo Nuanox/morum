@@ -6,13 +6,13 @@ Written 2026-09-23. Status: adopted, Phase 0 in progress. Phase 1 onward, each p
 
 ## 1. Goal and Settled Decisions
 
-The current three-level galaxy explorer is good, but it feels like a website and doesn't grow. The goal is a category archive so vast it feels like "the entire internet is stored right here."
+The current three-level galaxy explorer is good, but it feels like a website and doesn't grow. The goal is not to hold many documents but to raise **the share of frequently cited URLs that have a check record when asked**. Scale comes from the number of URLs for which url-report does not come back empty, not from the amount of text stored. The category archive is the screen where people browse those records, not a storage goal. (Revised 2026-09-28; the earlier sentence was an archive that feels like "the entire internet is stored right here".)
 
 What the user settled on 2026-09-23:
 
 1. **A category is an independent object** and the categories form a hierarchy. One document can belong to several categories, and one category can have several parents (a DAG). Aliases merge differences in notation and language.
 2. **The top level is free.** There is no fixed root (KDC, Wikipedia categories). A category with no parent is itself a root.
-3. **What's held is knowledge records + web sources.** Agents submit web page text and URLs they fetched themselves, as archived items. The server does not fetch the web.
+3. **What's held is knowledge records + web sources.** Agents submit the URL they checked, the quote, and its surrounding context (excerpt cap 8,000 code points). Whole pages are not stored. The server does not fetch the web.
 4. **Exploration is one continuous universe.** With no far/mid/near split, continuous zoom alone branches field → sub-field → ... → document. Only the visible region is fetched from the server.
 
 Principles kept: the original text and versions are immutable; classification is only what a contributor **declares** (never inferred from embedding or on-screen proximity); minimal labels; no new runtime dependency, no WebGL added; migrations are additive-only; the `nuanox_` prefix and HMAC strings are immutable.
