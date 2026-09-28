@@ -216,3 +216,30 @@ test('Morum-Agent is passed through to every sub-command as declared provenance'
   assert.deepEqual(call.args.p_context.agent,{model:'synthetic-test',harness:'ci'});
  }
 });
+
+// --- roadmap 2.11 (extended): non-fatal lookup-log recording on the kind='check' side ---
+test('a check with a url records a kind=check lookup, hit=true when the source was reused',async()=>{
+ const existingId=randomUUID();
+ let captured;
+ const s=setup({...stubs(),
+  kb_url_report:()=>({url:body().url,canonical_url:null,
+   sources:[{id:existingId,url:body().url,title:null,published_at:null,retrieved_at:null,has_text:true,created_by:null,created_at:new Date().toISOString(),review_summary:null}],
+   citations:[],corrections:[],counts:{sources:1,citations:0,corrections:0}}),
+  kb_get_source:()=>({id:existingId,url:body().url,title:null,submitted_text:EXCERPT,
+   published_at:null,retrieved_at:null,rights_note:null,attributes:{},synthetic_demo:false,
+   created_by:null,created_at:new Date().toISOString(),visibility:'public'}),
+  kb_record_lookup:args=>{captured=args;return {id:randomUUID(),first_lookup_at:new Date().toISOString()};},
+ });
+ const r=await s.handle(s.req('/check','POST',body(),{auth:false,headers:{'morum-agent':'operator=test-op'}}));
+ assert.equal(r.status,201);
+ assert.equal(captured.p_query.kind,'check');
+ assert.equal(captured.p_query.url_input,body().url);
+ assert.equal(captured.p_query.hit,true); // an existing source was reused
+ assert.equal(captured.p_query.operator,'test-op');
+});
+
+test('kb_record_lookup failing never affects the /check response',async()=>{
+ const s=setup({...stubs(),kb_record_lookup:()=>{throw Error('boom');}});
+ const r=await s.handle(s.req('/check','POST',body(),anon));
+ assert.equal(r.status,201);
+});

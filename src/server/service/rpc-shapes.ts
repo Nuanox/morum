@@ -107,6 +107,10 @@ export function checkUrlReport(value:unknown):void {
  object(counts.quote_states);
  const truncated=object(r.truncated);for(const field of ['sources','citations','corrections'])bool((truncated as Record<string,unknown>)[field]);
  date(r.generated_at);
+ // Roadmap 2.11 (extended): added by the handler after the kb_url_report call, not by the RPC
+ // itself; validated here too since urlReport validates the merged response, not the raw RPC result.
+ if(r.first_lookup_at!==null)date(r.first_lookup_at);
+ text(r.check_guide,64);
 }
 /** A review's `on` ref (counterarguments.reviews / agreements.reviews element). Roadmap 2.9:
  * an anchor-kind ref optionally carries exact/start/end; a not-yet-migrated database (pre-0113)

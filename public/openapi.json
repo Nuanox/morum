@@ -122,6 +122,11 @@
         "description": "See src/contracts/types.ts LocateResult. Full property extraction from TypeScript is out of scope for this generated document; see the named type in src/contracts/types.ts.",
         "type": "object"
       },
+      "LookupMetrics": {
+        "additionalProperties": true,
+        "description": "See src/contracts/types.ts LookupMetrics. Full property extraction from TypeScript is out of scope for this generated document; see the named type in src/contracts/types.ts.",
+        "type": "object"
+      },
       "MaintenanceResult": {
         "additionalProperties": true,
         "description": "See src/contracts/types.ts MaintenanceResult. Full property extraction from TypeScript is out of scope for this generated document; see the named type in src/contracts/types.ts.",
@@ -757,6 +762,81 @@
           }
         ],
         "summary": "Runs scheduled database maintenance."
+      }
+    },
+    "/api/v2/admin/metrics/lookups": {
+      "get": {
+        "operationId": "get_admin_metrics_lookups",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Protocol version the client expects; the server rejects a mismatched major/minor pair.",
+            "in": "header",
+            "name": "x-contract-version",
+            "required": false,
+            "schema": {
+              "pattern": "^2\\.[0-9]+\\.[0-9]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LookupMetrics"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Reports url-report/check lookup adoption metrics over a trailing window."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Failure envelope; see src/domain/errors.ts apiFailure()."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Failure envelope; see src/domain/errors.ts apiFailure()."
+          }
+        },
+        "security": [
+          {
+            "morumKey": []
+          }
+        ],
+        "summary": "Reports url-report/check lookup adoption metrics over a trailing window."
       }
     },
     "/api/v2/admin/moderation": {

@@ -456,14 +456,18 @@ function parseArgs(argv) {
   return {origin, json, limit};
 }
 
-/** GET only; never sends a body, a key, or any credential. Honors 429 Retry-After. */
-async function apiGet(origin, path, state) {
+/** GET only; never sends a body. Sends Authorization only when `authToken` is given (the
+ *  operator-only lookup-metrics call below); every other call in this script stays keyless.
+ *  Honors 429 Retry-After. */
+async function apiGet(origin, path, state, authToken) {
   const url = `${origin}/api/v2${path}`;
   for (let attempt = 0; ; attempt += 1) {
     state.requests_made += 1;
     let response;
     try {
-      response = await fetch(url, {headers: {accept: 'application/json', 'x-contract-version': CONTRACT_VERSION}, signal: AbortSignal.timeout(20000)});
+      const headers = {accept: 'application/json', 'x-contract-version': CONTRACT_VERSION};
+      if (authToken) headers.authorization = `Bearer ${authToken}`;
+      response = await fetch(url, {headers, signal: AbortSignal.timeout(20000)});
     } catch (error) {
       if (attempt >= 5) throw new Error(`transport failed for ${path}: ${error.message}`);
       await sleep(2000 * (attempt + 1));
@@ -532,6 +536,29 @@ async function loadEvalDocs(dir) {
   return docs;
 }
 
+/** Roadmap 2.11 (extended): operator-only adoption metrics over the lookup log (see
+ *  docs/METRICS.md "Lookup log metrics" and docs/OPERATIONS.md "Lookup log"). Only called
+ *  when MORUM_OPERATOR_KEY is set in the environment; the key itself is read, sent as a bearer
+ *  credential, and never printed or logged. Returns null (never throws) on any failure, so a bad
+ *  or revoked key degrades this one section instead of failing the whole report. */
+async function fetchLookupMetrics(origin, state, operatorKey) {
+  if (!operatorKey) return {skipped: 'operator key not set: lookup metrics skipped'};
+  try {
+    return await apiGet(origin, '/admin/metrics/lookups?days=30', state, operatorKey);
+  } catch (error) {
+    return {skipped: `lookup metrics request failed: ${error.message}`};
+  }
+}
+
+/** Pure rendering of fetchLookupMetrics's result; used by both text and JSON output. */
+export function formatLookupMetrics(m) {
+  if (!m || m.skipped) return m?.skipped ?? 'operator key not set: lookup metrics skipped';
+  const lines = [`window_days=${m.window_days} lookups=${m.lookups} hits=${m.hits} hit_rate=${fmtPct(m.hit_rate)} write_backs=${m.write_backs} write_back_rate=${fmtPct(m.write_back_rate)}`];
+  lines.push(`distinct_operators=${m.distinct_operators} distinct_agent_keys=${m.distinct_agent_keys}`);
+  for (const o of m.operators ?? []) lines.push(`  ${o.operator}: lookups=${o.lookups} hits=${o.hits} hit_rate=${fmtPct(o.hit_rate)} checks=${o.checks} write_backs=${o.write_backs} write_back_rate=${fmtPct(o.write_back_rate)}`);
+  return lines.join('\n');
+}
+
 async function main() {
   const {origin, json, limit} = parseArgs(process.argv.slice(2));
   const state = {requests_made: 0, lastRequestAt: 0, paceMs: 550}; // ~109 req/min, under the 120/min read limit
@@ -544,9 +571,15 @@ async function main() {
     if (done % 10 === 0 || done === total) log(`  dossier ${done}/${total}`);
   });
   const evalDocs = await loadEvalDocs(join(ROOT, 'data', 'eval'));
+  const lookupMetrics = await fetchLookupMetrics(origin, state, process.env.MORUM_OPERATOR_KEY);
 
   const report = buildReport({origin, records_scanned: records.length, requests_made: state.requests_made, dossiers, evalDocs});
-  process.stdout.write((json ? JSON.stringify(report, null, 2) : formatReport(report)) + '\n');
+  report.lookup_metrics = lookupMetrics;
+  if (!json) {
+    process.stdout.write(formatReport(report) + '\n' + rule('Lookup log metrics (operator-only, roadmap 2.11)') + '\n' + formatLookupMetrics(lookupMetrics) + '\n');
+  } else {
+    process.stdout.write(JSON.stringify(report, null, 2) + '\n');
+  }
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;

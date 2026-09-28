@@ -81,6 +81,16 @@ One JSON file per eval run (e.g. per provider per day), of the form:
 
 `scripts/metrics.mjs` reads every `*.json` file directly under `data/eval/` (not recursively), pools all runs together for the overall metric, and additionally breaks both metrics down `by_provider`. A file that fails to parse is skipped with a message on stderr, not a hard failure — a bad eval file should not take down the whole report.
 
+## Lookup log metrics (roadmap 2.11, extended)
+
+Separate from the five metrics above: these are computed server-side, over the operator-only `GET /admin/metrics/lookups?days=30` route (`public.kb_lookup_metrics`), not from the public API. They require `MORUM_OPERATOR_KEY`; see "Lookup log" in `docs/OPERATIONS.md` for what is and isn't stored, and `node scripts/metrics.mjs` for a plain-text rendering when the key is set (skipped, with a stated reason, when it isn't).
+
+- **Hit rate**: over `GET /api/v2/url-report` calls in the window, the share whose `kb_url_report` result already had `counts.sources >= 1` (a lookup that found a record). `hit_rate = hits / lookups`.
+- **Write-back rate**: over the *empty* lookups (`hit = false`) in the window, the share followed within 30 minutes by a `POST /api/v2/check` call on the same canonical URL from the same declared `operator` (or, when no operator was declared, the same authenticated agent key). `write_back_rate = write_backs / empty_lookups`. This is the signal that an agent, finding nothing, went and recorded something instead of citing the URL unchecked.
+- **Distinct operators / agent keys**: `count(distinct operator)` / `count(distinct agent_key_id)` over every lookup (both kinds) in the window, each restricted to non-null values. A high hit rate or write-back rate from a single operator says nothing about adoption beyond that one integration; this is the check against that.
+
+The owner's adopted success threshold (2026-09-28): **one operator other than the owner, sustained for two consecutive months, with at least 20 lookups and at least 5 writes (checks) per month, and a hit rate above 30% in that operator's own flow.** Below that, seeding and policy decisions should not be evaluated as if adoption were established.
+
 ## Known gaps in the public data (for a future dossier or metrics RPC)
 
 In order of impact on these five metrics:

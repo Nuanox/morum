@@ -68,4 +68,5 @@ export const HANDLERS:ReadonlyMap<string,Handler>=new Map<string,Handler>([
  ['POST /admin/maintenance',admin.maintenance],
  ['GET /admin/archive-checks/pending',archive.pending],
  ['POST /admin/archive-checks',archive.record],
+ ['GET /admin/metrics/lookups',admin.lookupMetrics],
 ]);

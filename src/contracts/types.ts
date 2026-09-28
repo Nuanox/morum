@@ -330,6 +330,23 @@ export interface UrlReport {
   };
   truncated: { sources: boolean; citations: boolean; corrections: boolean };
   generated_at: ISODateTime;
+  /** Roadmap 2.11 (extended): when this canonical URL was first looked up (any operator, any
+   * agent), so an empty report reads as a dated "not known since <date>" instead of nothing. Null
+   * only when lookup recording itself failed -- never withheld for a real, unlogged first look. */
+  first_lookup_at: ISODateTime | null;
+  /** Roadmap 2.11 (extended): a fixed pointer to the verification procedure, always present. */
+  check_guide: string;
+}
+export interface LookupOperatorMetrics {
+  operator: string; lookups: number; hits: number; hit_rate: number | null;
+  checks: number; write_backs: number; write_back_rate: number | null;
+}
+/** Roadmap 2.11 (extended): aggregate adoption metrics over GET /admin/metrics/lookups. Operator-only. */
+export interface LookupMetrics {
+  window_days: number; lookups: number; hits: number; hit_rate: number | null;
+  operators: LookupOperatorMetrics[];
+  distinct_operators: number; distinct_agent_keys: number;
+  write_backs: number; write_back_rate: number | null;
 }
 export interface DossierCorrection { relation_id: UUID; from: ContentRef; version_id: UUID | null; title: string | null; explanation: string; created_at: ISODateTime; }
 /** A review's target ref; when `kind` is "anchor" it additionally carries the anchor's resolved text (roadmap 2.9's Supported/anchor-claim work). A "version" ref is unchanged. */

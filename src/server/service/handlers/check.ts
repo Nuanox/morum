@@ -7,6 +7,20 @@ import {sha256} from '../../../domain/hash.js';
 import {readJson,readIdempotencyKey,parseDeclaredAgent,queryParams} from '../transport.js';
 import type {Handler} from './index.js';
 
+/** Roadmap 2.11 (extended): mirrors surfaces.ts's recordLookup for the kind='check' side of the
+ * lookup log (write-back detection needs both sides). Only meaningful when the check carried a
+ * URL; non-fatal, same as the url_report side -- never affects the response. */
+async function recordCheckLookup(request:Request,requestId:string,s:{db:{call<T>(name:string,args:unknown):Promise<T>}},urlInput:string,hit:boolean,actorId:string|null):Promise<void>{
+ try{
+  const declared=parseDeclaredAgent(request.headers.get('morum-agent'));
+  await s.db.call('kb_record_lookup',{p_query:{
+   kind:'check',url_input:urlInput,hit,
+   operator:declared?.operator??null,harness:declared?.harness??null,model:declared?.model??null,
+   agent_key_id:actorId,request_id:requestId,
+  }});
+ }catch{/* never let recording affect the response */}
+}
+
 /** Fallback only: mirrors the first two branches of knowledge.evidence_quote_check (exact
  * substring or not_found). The full six-state check is read back from kb_url_report below
  * whenever the source has a URL; this fallback covers excerpt-only sources and read failures. */
@@ -20,7 +34,7 @@ function quoteCheckState(quote:string,excerpt:string):T.QuoteCheckState {
 const subKey=(key:string,part:string):string=>sha256(`${key}:${part}`);
 
 export const check:Handler=async (ctx)=>{
- const {request,url,services:s,contributor,actor,respond,setWriteKey}=ctx;
+ const {request,url,requestId,services:s,contributor,actor,respond,setWriteKey}=ctx;
  queryParams(url,[]);
  const requestKey:string=request.headers.has('idempotency-key')?readIdempotencyKey(request):randomUUID();
  setWriteKey(requestKey);
@@ -99,5 +113,6 @@ export const check:Handler=async (ctx)=>{
   quote_check:quoteCheck,
   created:{record:recordCreated,source:sourceCreated,evidence:!evidenceResult.replayed},
  };
+ if(body.url!==null)await recordCheckLookup(request,requestId,s,body.url,!sourceCreated,actor?.actor_id??null);
  return respond(data,replayed,replayed?200:201);
 };

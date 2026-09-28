@@ -21,7 +21,7 @@ const checkFields=parseCheckFields(validationSrc);
 const contractVersion=parseContractVersion(typesSrc);
 
 test('the parser found the full, active route inventory',()=>{
- assert.equal(routes.length,43,`expected 43 parsed RouteEntry objects, got ${routes.length}`);
+ assert.equal(routes.length,44,`expected 44 parsed RouteEntry objects, got ${routes.length}`);
 });
 
 const generated=buildOpenApi({routes,shape,checkFields,contractVersion});

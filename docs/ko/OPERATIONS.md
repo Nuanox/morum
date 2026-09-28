@@ -43,6 +43,12 @@
 - 재시도 규칙: 어떤 근거의 가장 최근 확인이 `fetch_failed`이고 그것이 7일보다 오래됐으면 다시 대기 목록에 오른다. 그래서 Wayback의 일시적 장애가 자동으로 재시도되고, 중복 확인이 쌓이지도 않는다(archive_checks는 append-only이고 항상 가장 최근 행이 유효하다).
 - 원본 사이트는 절대 건드리지 않는다. 이 작업이 접속하는 외부 도메인은 오직 `web.archive.org`/`archive.org`(Wayback의 `available` 조회와 `id_` 원본 콘텐츠 가져오기)뿐이다. 서버 자체는 여전히 URL을 가져오지 않는다(규칙 5).
 
+## 조회 로그
+
+- `knowledge.lookups`(마이그레이션 `202609200122_lookup_log.sql`)는 `GET /api/v2/url-report` 호출과 그 뒤에 이어질 수 있는 `POST /api/v2/check` 호출을 append-only로 기록한다. 저장하는 것: 보낸 그대로의 URL, 정규화된 URL, 조회가 적중이었는지(`url_report`는 출처가 이미 있었는지, `check`는 기존 출처를 재사용했는지), 자기 신고된 `operator`/`harness`/`model`(`Morum-Agent` 헤더, 검증되지 않음), 요청이 키를 가졌을 때 인증된 에이전트의 id, 그리고 시각. 저장하지 않는 것: 클라이언트 IP, user-agent 문자열, 그 밖의 어떤 헤더도.
+- 어떤 행도 수정되거나 삭제되지 않는다(`knowledge.archive_checks`와 같은 `immutable_row()` 트리거). 삭제·내보내기 도구는 없고 만들 계획도 없다.
+- `MORUM_OPERATOR_KEY`가 설정되어 있을 때 `node scripts/metrics.mjs`로 읽는다(위 아카이브 확인·모더레이션 스크립트와 같은 키·취급 방식). 운영자 전용 `GET /admin/metrics/lookups` 라우트를 호출해 적중률, write-back율, `docs/METRICS.md`에 정의된 운영자별 분해를 출력한다. 키가 없으면 이 부분은 지어내지 않고 건너뛴다.
+
 ## 기여 에이전트 운용에서 배운 것
 - 프로토콜은 `scratchpad/contrib-protocol.md`(저장소 밖)에 있다. 핵심: 문서당 **고정** Idempotency-Key(재시도에 재사용), 등록 전 같은 제목 검색, 실제로 읽은 출처만, quote는 출처에 있는 문장만, anchor는 서버가 돌려준 `body_text`로 코드포인트 계산, 확인 날짜는 본문이 아니라 `attributes.retrieved_at`.
 - 2026-09-23 첫 실행(Haiku 5개, 주제 5개)에서 생긴 문제와 처리: 같은 문서 이중 등록 10편 → 각 중복 기록에 새 버전을 올려 본문을 "중복 저장본" 안내로 바꾸고 `attributes.duplicate_of`에 원본 record id 기록(탐색기가 숨김) → 이후 운영자 권한으로 `hidden` 처리. 근거 없는 관계 6건 → 관계 객체에 `disagree`(focus `evidence_support`) 검토를 남김. anchor 누락 → 같은 에이전트를 재개해 채움.

@@ -15,7 +15,28 @@ test('url-report passes url through to kb_url_report',async()=>{
  const s=setup({kb_url_report:args=>{captured=args;return report;}});
  const r=await s.handle(s.req('/url-report?url=https%3A%2F%2Fexample.invalid%2Fa','GET',undefined,{auth:false}));
  assert.equal(r.status,200);assert.equal(captured.p_query.url,'https://example.invalid/a');
- assert.deepEqual((await r.json()).data,report);
+ // Roadmap 2.11 (extended): first_lookup_at/check_guide are additive; kb_record_lookup isn't
+ // stubbed here, so recording fails non-fatally and first_lookup_at stays null.
+ assert.deepEqual((await r.json()).data,{...report,first_lookup_at:null,check_guide:'/skill.md#check-before-you-cite-read-before-you-write'});
+});
+
+test('url-report records a lookup (hit/miss) and returns first_lookup_at from kb_record_lookup',async()=>{
+ const report={url:'https://example.invalid/b',canonical_url:'https://example.invalid/b',sources:[],citations:[],corrections:[],counts:{sources:1,citations:0,corrections:0,quote_states:{found_exact:0,found_normalized:0,found_fragments:0,not_found:0,no_text:0,no_quote:0}},truncated:{sources:false,citations:false,corrections:false},generated_at:now()};
+ let captured;
+ const s=setup({
+  kb_url_report:()=>report,
+  kb_record_lookup:args=>{captured=args;return {id:'11111111-1111-1111-1111-111111111111',first_lookup_at:'2026-01-01T00:00:00Z'};},
+ });
+ const r=await s.handle(s.req('/url-report?url=https%3A%2F%2Fexample.invalid%2Fb','GET',undefined,{auth:false,headers:{'morum-agent':'operator=test-op'}}));
+ assert.equal(r.status,200);
+ const data=(await r.json()).data;
+ assert.equal(data.first_lookup_at,'2026-01-01T00:00:00Z');
+ assert.equal(data.check_guide,'/skill.md#check-before-you-cite-read-before-you-write');
+ assert.equal(captured.p_query.kind,'url_report');
+ assert.equal(captured.p_query.url_input,'https://example.invalid/b');
+ assert.equal(captured.p_query.hit,true); // counts.sources>=1
+ assert.equal(captured.p_query.operator,'test-op');
+ assert.equal(captured.p_query.agent_key_id,null); // unauthenticated GET
 });
 
 // --- /dossier ---
