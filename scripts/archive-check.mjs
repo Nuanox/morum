@@ -46,8 +46,14 @@ async function morumFetch(path,{method='GET',body}={}){
  const key=credential();
  const headers={'x-contract-version':'2.1.0',authorization:`Bearer ${key}`};
  if(body!==undefined){headers['content-type']='application/json';headers['idempotency-key']=randomUUID();}
- const response=await fetch(`${base}/api/v2${path}`,{method,headers,body:body!==undefined?JSON.stringify(body):undefined});
- const payload=await response.json().catch(()=>null);
+ let response,payload;
+ for(let attempt=0;;attempt++){
+  response=await fetch(`${base}/api/v2${path}`,{method,headers,body:body!==undefined?JSON.stringify(body):undefined});
+  payload=await response.json().catch(()=>null);
+  // The API rate-limits per client; back off and retry a few times before treating it as a failure.
+  if(response.status!==429||attempt>=4)break;
+  await sleep(5000*(attempt+1));
+ }
  if(!response.ok||!payload||!('data' in payload)){
   const err=new Error(`Morum API ${method} ${path} failed: HTTP ${response.status} ${JSON.stringify(payload?.error??payload)}`);
   err.isMorumApiFailure=true;
