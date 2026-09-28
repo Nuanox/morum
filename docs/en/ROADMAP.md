@@ -196,6 +196,7 @@ Document count is not a metric. Look at distributions, not averages.
 - **The temptation to relicense later**: don't change the license once it's set now. Projects that changed it suffered forks and lost trust.
 - **Grading answers leaking**: keep staging's answer-key data somewhere the agent cannot read.
 - **Scope creep**: items in the "What's Next" section don't start within this month.
+- **Not doing (money)**: token issuance, exchange listing, free transfer between participants. Mutual credit denominated in checks is parked, unadopted, in `docs/design/2026-09-28-mutual-credit.md`; it is reopened only when someone asks to pay for a check, or one operator holds more requests than they can verify themselves. Until then no API slot is reserved for it.
 
 ## 7. What the Research Changed (Revision 1 Summary)
 
