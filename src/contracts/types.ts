@@ -364,7 +364,7 @@ export interface Dossier {
   /** Roadmap 2.9: schema.org ClaimReview JSON-LD, additive; rendered by claimreview.ts. */
   claim_reviews?: unknown[];
 }
-export type AttentionReason = "quote_not_found" | "contested" | "no_basis" | "requested" | "quote_unverifiable" | "unreviewed" | "uncategorized";
+export type AttentionReason = "quote_not_found" | "archive_not_found" | "contested" | "no_basis" | "requested" | "quote_unverifiable" | "unreviewed" | "uncategorized";
 export interface AttentionItem {
   reason: AttentionReason; priority: number; target: ContentRef;
   record_id: UUID | null; version_id: UUID | null; title: string | null;

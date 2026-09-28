@@ -38,7 +38,7 @@ export const attention:Handler=async ({url,services:s,respond})=>{
  let reasons:string[]|undefined;
  if(q.reasons!==undefined){
   reasons=q.reasons.split(',').map(r=>r.trim()).filter(r=>r.length>0);
-  const allowed=['quote_not_found','contested','no_basis','requested','quote_unverifiable','unreviewed','uncategorized'];
+  const allowed=['quote_not_found','archive_not_found','contested','no_basis','requested','quote_unverifiable','unreviewed','uncategorized'];
   ensure(reasons.length>0&&reasons.every(r=>allowed.includes(r)),'VALIDATION_FAILED');
  }
  if(q.seed!==undefined)ensure(/^[A-Za-z0-9._~-]{1,64}$/.test(q.seed),'VALIDATION_FAILED');

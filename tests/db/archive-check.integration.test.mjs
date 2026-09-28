@@ -108,5 +108,33 @@ else {
    assert(item,'evidence should appear in the dossier');
    assert.equal(item.archive_check.state,'found_normalized');
   });
+
+  await t.test('kb_attention (0121): archive_not_found lists evidence whose newest archive check is not_found, with detail fields; found_exact does not list it; a newer found_exact removes it; counts include the key',async()=>{
+   const {evidence}=await externalEvidence('an attention archive_not_found quote');
+   let seen=await rpc(a,'kb_attention',{p_query:{reasons:['archive_not_found'],limit:50}});
+   assert(!seen.items.some(i=>i.target.id===evidence.id),'not checked yet: should not be listed');
+
+   await raw(a,'kb_record_archive_check',{p_actor:operator.actor,p_query:{
+    evidence_id:evidence.id,state:'not_found',
+    archive_url:'https://web.archive.org/web/20240101000000id_/https://example.org/archive-check-fixture',
+    snapshot_at:'2024-01-01T00:00:00Z',rule_version:'archive_check/1',
+   }});
+   seen=await rpc(a,'kb_attention',{p_query:{reasons:['archive_not_found'],limit:50}});
+   const item=seen.items.find(i=>i.target.id===evidence.id);
+   assert(item,'not_found archive check should surface under archive_not_found');
+   assert.equal(item.detail.archive_state,'not_found');
+   assert.equal(item.detail.archive_url,'https://web.archive.org/web/20240101000000id_/https://example.org/archive-check-fixture');
+   assert.equal(item.detail.snapshot_at,'2024-01-01T00:00:00.000Z');
+   assert.ok(seen.counts.archive_not_found>=1);
+
+   const {evidence:evidence2}=await externalEvidence('an attention found_exact quote');
+   await raw(a,'kb_record_archive_check',{p_actor:operator.actor,p_query:{evidence_id:evidence2.id,state:'found_exact',rule_version:'archive_check/1'}});
+   seen=await rpc(a,'kb_attention',{p_query:{reasons:['archive_not_found'],limit:50}});
+   assert(!seen.items.some(i=>i.target.id===evidence2.id),'found_exact should not be listed under archive_not_found');
+
+   await raw(a,'kb_record_archive_check',{p_actor:operator.actor,p_query:{evidence_id:evidence.id,state:'found_exact',rule_version:'archive_check/1'}});
+   seen=await rpc(a,'kb_attention',{p_query:{reasons:['archive_not_found'],limit:50}});
+   assert(!seen.items.some(i=>i.target.id===evidence.id),'newest check wins: a newer found_exact removes it from archive_not_found');
+  });
  });
 }
