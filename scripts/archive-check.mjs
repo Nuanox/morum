@@ -82,7 +82,9 @@ async function fetchSnapshot(url){
   }
   return {ok:true,contentType,bytes};
  }catch(error){
-  return {ok:false,detail:String(error?.message??error).slice(0,500)};
+  const cause=error?.cause;
+  const why=error?.name==='AbortError'?`timeout after ${FETCH_TIMEOUT_MS} ms`:[error?.message,cause?.code,cause?.message].filter(Boolean).join(': ');
+  return {ok:false,detail:String(why||error).slice(0,500)};
  }finally{
   clearTimeout(timer);
  }
