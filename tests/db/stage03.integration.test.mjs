@@ -14,6 +14,7 @@ else {
  const {KnowledgeRepository}=await import('../../.test-build/server/db/knowledge-repository.js');
  const {CursorCodec}=await import('../../.test-build/server/db/cursor.js');
  const {createHandler}=await import('../../.test-build/server/service/http.js');
+ const {verifyWebBotAuth}=await import('../../.test-build/server/service/web-bot-auth.js');
  const {mapDatabaseError}=await import('../../.test-build/domain/errors.js');
  const {NuanoxClient}=await import('../../examples/nuanox-client.mjs');
  const {protocolFlow}=await import('../../examples/protocol-flow.mjs');
@@ -24,7 +25,7 @@ else {
    const db={async call(name,args){assert.match(name,/^kb_[a-z_]+$/);const entries=Object.entries(args);for(const[k]of entries)assert.match(k,/^p_[a-z_]+$/);const c=await pool.connect();try{await c.query('begin');await c.query('set local role service_role');await c.query("set local statement_timeout='15s'");const binds=entries.map(([key],i)=>`${key} => $${i+1}::jsonb`).join(',');const r=await c.query(`select public.${name}(${binds}) as value`,entries.map(([,v])=>JSON.stringify(v)));await c.query('commit');return r.rows[0].value;}catch(e){await c.query('rollback');throw mapDatabaseError(e);}finally{c.release();}}};
    const secret='isolated-test-not-a-deployed-secret-'.repeat(2),cursors=new CursorCodec(secret),rates=new RateLimiter(db,secret),auth=new AgentAuth(db,secret,true);
    const embeddings=new Embeddings({provider:'disabled',budgetApproved:false,dataSharingApproved:false,dailyTokenCap:0,requestTokenCap:0,timeoutMs:100},rates,()=>{throw Error('Provider calls forbidden in this DB suite');});
-   const services={db,repo:new KnowledgeRepository(db,cursors),auth,rates,embeddings,retrieval:new Retrieval(db,cursors,embeddings),worker:new IndexWorker(db,embeddings)};
+   const services={db,repo:new KnowledgeRepository(db,cursors),auth,rates,embeddings,retrieval:new Retrieval(db,cursors,embeddings),worker:new IndexWorker(db,embeddings),verifySignature:(request)=>verifyWebBotAuth(request)};
    const handler=createHandler(()=>services),transport=(url,init)=>handler(new Request(url,init));
    dir=await mkdtemp(join(tmpdir(),'nuanox-real-db-'));const a=await NuanoxClient.initialize('http://localhost',join(dir,'a','credential.json'),transport),b=await NuanoxClient.initialize('http://localhost',join(dir,'b','credential.json'),transport);let result;
    await t.test('two ownerless agents write, replay, preserve a revision, attach meaning/evidence/review and query context',async()=>{result=await protocolFlow(a,b,{legacyKeyed:true});assert.notEqual(result.agents[0],result.agents[1]);assert.equal(result.replayed,true);assert.equal(result.replay_version_id,result.root.id);assert.equal(result.oldView.version.body_text,result.root.body_text);assert.equal(result.child.parent_version_id,result.root.id);assert.equal(result.source.submitted_text.includes('\r\n'),true);assert.equal(result.annotation.anchor_id,result.anchor.id);assert.equal(result.evidence.submission_state,'submitted');assert.equal(result.childView.review_summary.effective_reviewers,0);assert.ok(result.context.items.some(x=>x.reason==='correction'));assert.ok(result.search.hits.length);assert.equal(result.search.status.mode,'keyword_only');assert.equal(result.search.status.reason,'disabled');});

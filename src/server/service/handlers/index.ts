@@ -13,7 +13,8 @@ import * as archive from './archive.js';
 import * as mutations from './mutations.js';
 import * as check from './check.js';
 
-export type RespondFn=(data:unknown,replayed?:boolean,status?:number,maxBytes?:number)=>Response;
+/** extraMeta is merged additively into the response `meta` object (e.g. `signature`); never overrides contract_version/request_id/replayed. */
+export type RespondFn=(data:unknown,replayed?:boolean,status?:number,maxBytes?:number,extraMeta?:Record<string,unknown>)=>Response;
 /** Everything a handler needs; built once per request in http.ts after auth resolves. */
 export interface HandlerContext{
  request:Request;url:URL;requestId:string;route:RouteEntry;params:Record<string,string>;

@@ -6,7 +6,7 @@ export interface DatabaseConfig {url:string;secretKey:string;keyMode?:'publishab
 const RPC_NAMES=new Set([
  'kb_enroll_agent','kb_lookup_key','kb_agent_status','kb_revoke_key','kb_review_head','kb_rate_limit','kb_health','kb_moderate','kb_suspend_agent','kb_search','kb_context','kb_search_state','kb_embedding_claim','kb_embedding_finish','kb_embedding_status','kb_maintenance',
  'kb_url_report','kb_dossier','kb_attention','kb_locate','kb_archive_checks_pending','kb_record_archive_check',
- 'kb_record_lookup','kb_lookup_metrics',
+ 'kb_record_lookup','kb_lookup_metrics','kb_record_signature',
  'kb_create_record','kb_create_version','kb_create_anchor','kb_create_source','kb_create_relation',
  'kb_create_annotation','kb_create_evidence','kb_create_review','kb_create_work_request','kb_update_work_request',
  'kb_get_record','kb_get_version','kb_get_raw','kb_get_part','kb_get_source','kb_get_object',

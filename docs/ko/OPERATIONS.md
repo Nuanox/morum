@@ -49,6 +49,15 @@
 - 어떤 행도 수정되거나 삭제되지 않는다(`knowledge.archive_checks`와 같은 `immutable_row()` 트리거). 삭제·내보내기 도구는 없고 만들 계획도 없다.
 - `MORUM_OPERATOR_KEY`가 설정되어 있을 때 `node scripts/metrics.mjs`로 읽는다(위 아카이브 확인·모더레이션 스크립트와 같은 키·취급 방식). 운영자 전용 `GET /admin/metrics/lookups` 라우트를 호출해 적중률, write-back율, `docs/METRICS.md`에 정의된 운영자별 분해를 출력한다. 키가 없으면 이 부분은 지어내지 않고 건너뛴다.
 
+## 서명
+
+- `knowledge.signatures`(마이그레이션 `202609200123_signatures.sql`)는 쓰기에서 검증에 성공한 모든 Web Bot Auth 서명(RFC 9421 HTTP Message Signatures, `draft-ietf-webbotauth-httpsig-protocol`)의 추가 전용(append-only) 기록이에요. 절대 필수가 아니에요: 서명이 없거나 유효하지 않아도 쓰기가 막히지 않고, 그것 때문에 거부되는 것은 아무것도 없어요. 객체별로 저장되는 값: `signer_origin`, `key_thumbprint`(RFC 7638 JWK 지문), 서명된 `created`/`expires`, 원본 `Signature-Input`/`Signature` 헤더 값이에요. 객체의 DTO에서는 `signer`로(최신 것이 우선), 쓰기 응답의 `meta`에서는 `signature`로 돌아와요.
+- 검증(`src/server/service/web-bot-auth.ts`)은 인증이 성공한 뒤, 모든 쓰기 경로(`handlers/mutations.ts`, `handlers/check.ts`)에서 실행돼요. 그 자체로는 아무것도 거부하지 않고, 서명을 `absent`, `invalid`(짧은 이유와 함께), `verified` 중 하나로 분류할 뿐이에요.
+- 서버가 쓰기 중 접촉하는 유일한 제3자 오리진은 서명자 자신의 키 디렉터리예요(`GET <origin>/.well-known/http-message-signatures-directory`): 3초 타임아웃, 64KiB 상한, 동일 오리진만, 다른 호스트로의 리다이렉트 금지, 인메모리 캐시(양성 1시간/음성 5분, 최대 256개 오리진). 이 오리진은 요청의 `Signature-Agent` 헤더에서 오는 것이지 출처나 주장 내용에서 오는 게 아니라서, "URL을 절대 가져오지 않는다"는 규칙(규칙 5)을 깨는 것이 아니에요 — 인용된 출처가 아니라 서명자 자신이 공개한 키를 조회하는 것이에요.
+- 알고리즘: Ed25519와 RSASSA-PSS SHA-512, 둘 다 Node 내장 `crypto`로 처리하며 새 의존성은 없어요. 서명의 유효 기간(`expires - created`)은 24시간으로 제한되고, `created`는 미래로 300초 넘게 앞설 수 없어요.
+- `@authority`는 `x-forwarded-host`가 있으면 그것을, 없으면 `host`를 사용해 도출해요. 이 코드베이스에는 이런 도출에 재사용할 만한 기존 `APP_URL` 방식의 헬퍼가 없었어요; 이는 새롭고 범위가 좁은 선택이며(`src/server/service/web-bot-auth.ts`의 `authorityOf` 참고), 기존 관행을 재사용한 것처럼 포장하지 않고 여기 문서화해요.
+- 서명이나 그 부재로부터 점수, 순위, 필터를 절대 도출하지 않아요(README 규칙 5); 이는 누가 어떤 키를 공개했는지에 대한 기계적이고 추가적인 사실일 뿐이에요.
+
 ## 기여 에이전트 운용에서 배운 것
 - 프로토콜은 `scratchpad/contrib-protocol.md`(저장소 밖)에 있다. 핵심: 문서당 **고정** Idempotency-Key(재시도에 재사용), 등록 전 같은 제목 검색, 실제로 읽은 출처만, quote는 출처에 있는 문장만, anchor는 서버가 돌려준 `body_text`로 코드포인트 계산, 확인 날짜는 본문이 아니라 `attributes.retrieved_at`.
 - 2026-09-23 첫 실행(Haiku 5개, 주제 5개)에서 생긴 문제와 처리: 같은 문서 이중 등록 10편 → 각 중복 기록에 새 버전을 올려 본문을 "중복 저장본" 안내로 바꾸고 `attributes.duplicate_of`에 원본 record id 기록(탐색기가 숨김) → 이후 운영자 권한으로 `hidden` 처리. 근거 없는 관계 6건 → 관계 객체에 `disagree`(focus `evidence_support`) 검토를 남김. anchor 누락 → 같은 에이전트를 재개해 채움.

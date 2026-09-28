@@ -10,6 +10,9 @@ export type ISODateTime = string;
 export type SHA256 = string;
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 export type Attributes = { [key: string]: JsonValue };
+// Roadmap: optional Web Bot Auth (RFC 9421) verification. Present on every object kind DTO;
+// null when never signed. Never used for scoring, ranking or filtering (README rule 5).
+export interface SignerInfo { origin: string; key_thumbprint: string; created_at: ISODateTime; }
 export type BodyFormat = "plain_text" | "markdown";
 export type Visibility = "public" | "hidden" | "tombstone";
 export type ActorKind = "human" | "agent";
@@ -54,6 +57,7 @@ export interface AnchorInput {
 }
 export interface Anchor extends Omit<AnchorInput, "selector"> {
   id: UUID; created_by: UUID | null; created_at: ISODateTime; selector: TextSelector;
+  signer: SignerInfo | null;
 }
 export type EvidenceBasis =
   | { kind: "external"; source_id: UUID; quote: string | null; explanation: string }
@@ -63,6 +67,7 @@ export interface Evidence extends EvidenceCommon { basis: EvidenceBasis; }
 export interface EvidenceCommon {
   id: UUID; target: EvidenceTargetRef; created_by: UUID | null; created_at: ISODateTime;
   submission_state: "submitted"; // Does not imply the citation was checked.
+  signer: SignerInfo | null;
 }
 export interface SourceInput {
   url: string | null; title: string | null;
@@ -72,6 +77,7 @@ export interface SourceInput {
 }
 export interface Source extends SourceInput {
   id: UUID; created_by: UUID | null; created_at: ISODateTime; visibility: Visibility;
+  signer: SignerInfo | null;
 }
 export interface ReviewSummary {
   agree: number; disagree: number; needs_review: number;
@@ -86,6 +92,7 @@ export interface Version {
   title: string | null; body_text: string; body_format: BodyFormat;
   body_sha256: SHA256; attributes: Attributes; synthetic_demo: boolean;
   reason: string; created_by: UUID | null; created_at: ISODateTime; visibility: Visibility;
+  signer: SignerInfo | null;
 }
 export interface VersionView {
   version: Version;
@@ -142,6 +149,7 @@ export interface CreateRelationRequest {
 }
 export interface Relation extends Omit<CreateRelationRequest, "basis"> {
   id: UUID; created_by: UUID | null; created_at: ISODateTime;
+  signer: SignerInfo | null;
 }
 export interface CreateAnnotationRequest {
   anchor_id: UUID; meaning: string; concept_version_id: UUID | null;
@@ -150,6 +158,7 @@ export interface CreateAnnotationRequest {
 }
 export interface Annotation extends Omit<CreateAnnotationRequest, "basis"> {
   id: UUID; created_by: UUID | null; created_at: ISODateTime;
+  signer: SignerInfo | null;
 }
 export type AnchorProjection =
   | { state: "candidate"; selector: TextSelector; requires_confirmation: true }
@@ -172,6 +181,7 @@ export interface CreateReviewRequest {
 }
 export interface Review extends Omit<CreateReviewRequest, "basis"> {
   id: UUID; created_by: UUID | null; created_at: ISODateTime;
+  signer: SignerInfo | null;
 }
 export type WorkStatus = "open" | "in_progress" | "resolved" | "closed";
 export interface CreateWorkRequest {
@@ -183,6 +193,7 @@ export interface WorkRequest extends CreateWorkRequest {
   created_by: UUID; assigned_to: UUID | null;
   created_at: ISODateTime; updated_at: ISODateTime;
   resolution_refs: LocationRef[];
+  signer: SignerInfo | null;
 }
 export interface UpdateWorkRequest {
   expected_revision: number;

@@ -9,11 +9,12 @@ import type {AgentContext} from './auth.js';
 import {HttpError} from './transport.js';
 import {matchRoute,allowedMethods} from './routes.js';
 import {HANDLERS} from './handlers/index.js';
+import type {RespondFn} from './handlers/index.js';
 import {healthProbe} from './handlers/system.js';
 const BASE='/api/v2';
 const headers=(id:string):Record<string,string>=>({'cache-control':'no-store','x-content-type-options':'nosniff','x-contract-version':CONTRACT_VERSION,'x-request-id':id,'referrer-policy':'no-referrer','content-security-policy':"default-src 'none'; frame-ancestors 'none'"});
-function success(data:unknown,id:string,replayed=false,status=200,maxBytes=1048576):Response{
- ensure(data!==undefined,'INTERNAL_ERROR');const body=JSON.stringify({data,meta:{contract_version:CONTRACT_VERSION,request_id:id,replayed}});
+function success(data:unknown,id:string,replayed=false,status=200,maxBytes=1048576,extraMeta?:Record<string,unknown>):Response{
+ ensure(data!==undefined,'INTERNAL_ERROR');const body=JSON.stringify({data,meta:{contract_version:CONTRACT_VERSION,request_id:id,replayed,...extraMeta}});
  if(Buffer.byteLength(body)>maxBytes)throw new HttpError('PAYLOAD_TOO_LARGE',413);
  return new Response(body,{status,headers:{...headers(id),'content-type':'application/json; charset=utf-8'}});
 }
@@ -28,7 +29,7 @@ export function createHandler(factory:()=>Services,health:()=>Promise<T.Health>=
    if(!match){if(allow.length)throw new HttpError('VALIDATION_FAILED',405);fail('NOT_FOUND');}
    const route=match.route,p=match.params;
    for(const [name,value]of Object.entries(p))if(name!=='kind')uuid(value);
-   const respond=(data:unknown,replayed=false,status=200,max=1048576)=>{const r=success(data,id,replayed,status,max);if(writeKey)r.headers.set('idempotency-key',writeKey);return request.method==='HEAD'?new Response(null,{status:r.status,headers:r.headers}):r;};
+   const respond:RespondFn=(data,replayed=false,status=200,max=1048576,extraMeta)=>{const r=success(data,id,replayed,status,max,extraMeta);if(writeKey)r.headers.set('idempotency-key',writeKey);return request.method==='HEAD'?new Response(null,{status:r.status,headers:r.headers}):r;};
    const rawResponse=(body:string|null,extra:Record<string,string>,status=200)=>new Response(request.method==='HEAD'?null:body,{status,headers:{...headers(id),...extra}});
    // No services, no rate limit: /health must report a friendly status even when the DB is unconfigured.
    if(route.probe)return await healthProbe(url,health,respond);

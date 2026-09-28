@@ -5,7 +5,24 @@ import {validateCheckRequest} from '../../../domain/validation.js';
 import {mutate} from '../../../domain/mutate.js';
 import {sha256} from '../../../domain/hash.js';
 import {readJson,readIdempotencyKey,parseDeclaredAgent,queryParams} from '../transport.js';
+import {signatureMeta} from '../web-bot-auth.js';
+import type {SignerResult} from '../web-bot-auth.js';
 import type {Handler} from './index.js';
+
+/** Records a verified signature against one object /check just wrote (source, or a newly-created
+ * record's version, or the evidence row). Never fatal; no-op unless verified. Mirrors
+ * handlers/mutations.ts's recordSignatureIfVerified for the single-object write paths. */
+async function recordSignature(s:{db:{call<T>(name:string,args:unknown):Promise<T>}},result:SignerResult,kind:string,id:string,signatureInput:string|null,signature:string|null):Promise<void>{
+ if(result.state!=='verified')return;
+ try{
+  await s.db.call('kb_record_signature',{p_query:{
+   object_kind:kind,object_id:id,
+   signer_origin:result.origin,key_thumbprint:result.key_thumbprint,
+   created:result.created,expires:result.expires,
+   signature_input:signatureInput,signature,
+  }});
+ }catch{/* never let recording affect the response */}
+}
 
 /** Roadmap 2.11 (extended): mirrors surfaces.ts's recordLookup for the kind='check' side of the
  * lookup log (write-back detection needs both sides). Only meaningful when the check carried a
@@ -41,6 +58,9 @@ export const check:Handler=async (ctx)=>{
  const body=validateCheckRequest(await readJson(request));
  const declared=parseDeclaredAgent(request.headers.get('morum-agent'));
  const who=contributor??actor!;
+ // Roadmap: optional Web Bot Auth (RFC 9421) verification; run after auth, never rejects.
+ const signer=await s.verifySignature(request);
+ const sigInputHeader=request.headers.get('signature-input'),sigHeader=request.headers.get('signature');
 
  let recordId:T.UUID,versionId:T.UUID,recordCreated=false,recordReplayed=true;
  if(body.record_id!==null){
@@ -114,5 +134,8 @@ export const check:Handler=async (ctx)=>{
   created:{record:recordCreated,source:sourceCreated,evidence:!evidenceResult.replayed},
  };
  if(body.url!==null)await recordCheckLookup(request,requestId,s,body.url,!sourceCreated,actor?.actor_id??null);
- return respond(data,replayed,replayed?200:201);
+ if(recordCreated)await recordSignature(s,signer,'version',versionId,sigInputHeader,sigHeader);
+ if(sourceCreated)await recordSignature(s,signer,'source',sourceId,sigInputHeader,sigHeader);
+ if(!evidenceResult.replayed)await recordSignature(s,signer,'evidence',evidenceResult.data.id,sigInputHeader,sigHeader);
+ return respond(data,replayed,replayed?200:201,undefined,{signature:signatureMeta(signer)});
 };

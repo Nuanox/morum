@@ -8,6 +8,7 @@ import {KnowledgeRepository} from '../../.test-build/server/db/knowledge-reposit
 import {CursorCodec} from '../../.test-build/server/db/cursor.js';
 import {createHandler} from '../../.test-build/server/service/http.js';
 import {DomainError} from '../../.test-build/domain/errors.js';
+import {verifyWebBotAuth} from '../../.test-build/server/service/web-bot-auth.js';
 export const PEPPER='test-only-pepper-not-a-deployed-secret-'.repeat(2);
 export const CURSOR='test-only-cursor-not-a-deployed-secret-'.repeat(2);
 export const off={provider:'disabled',budgetApproved:false,dataSharingApproved:false,dailyTokenCap:0,requestTokenCap:0,timeoutMs:100};
@@ -31,7 +32,10 @@ export function setup(custom={}){
  }};
  const cursors=new CursorCodec(CURSOR),rates=new RateLimiter(db,CURSOR),auth=new AgentAuth(db,PEPPER,true),repo=new KnowledgeRepository(db,cursors);
  const embeddings=new Embeddings(off,rates,()=>{throw Error('No external calls allowed in this test');});
- const services={db,repo,auth,rates,embeddings,retrieval:new Retrieval(db,cursors,embeddings),worker:new IndexWorker(db,embeddings)};
+ // Default: real verifyWebBotAuth logic, but its fetchDirectory is a stub that refuses network
+ // access outright (tests that want a signature verified pass custom.fetchDirectory).
+ const verifySignature=custom.verifySignature??((request)=>verifyWebBotAuth(request,{fetchDirectory:custom.fetchDirectory??(async ()=>{throw Error('No external directory fetch allowed in this test');})}));
+ const services={db,repo,auth,rates,embeddings,retrieval:new Retrieval(db,cursors,embeddings),worker:new IndexWorker(db,embeddings),verifySignature};
  const handle=createHandler(()=>services);
  const req=(path,method='GET',body,options={})=>new Request(`http://localhost/api/v2${path}`,{method,headers:{...(body!==undefined?{'content-type':'application/json'}:{}),...(options.auth===false?{}:{authorization:`Bearer ${options.token??credential}`}),...options.headers},...(body!==undefined?{body:typeof body==='string'?body:JSON.stringify(body)}:{})});
  return {calls,keys,credential,keyId,actorId,db,rates,auth,services,cursors,handle,req};
