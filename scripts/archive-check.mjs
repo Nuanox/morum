@@ -12,6 +12,7 @@
 // Env:
 //   MORUM_BASE            default https://morum.vercel.app
 //   MORUM_OPERATOR_KEY    required; never printed
+//   ARCHIVE_CHECK_ITEMS_FILE  optional JSON array of items to re-check instead of the pending list
 //   ARCHIVE_CHECK_LIMIT   default 50
 //   ARCHIVE_CHECK_DRY_RUN 1 prints what would be posted, without posting
 import {randomUUID} from 'node:crypto';
@@ -19,7 +20,9 @@ import {quoteCheck} from './lib/quote-check.mjs';
 import {extractHtmlText} from './lib/html-text.mjs';
 import {parseArchiveUrlHint,snapshotUrl,toWaybackTimestamp,availableUrl} from './lib/wayback.mjs';
 
-const RULE_VERSION='archive_check/1';
+// archive_check/2 (2026-09-28): trailing terminal punctuation is ignored, so a
+// sentence cut short and closed with a period still matches the page.
+const RULE_VERSION='archive_check/2';
 const FETCH_TIMEOUT_MS=25000;
 const MAX_BYTES=5*1024*1024;
 const USER_AGENT='Morum archive-check (+https://morum.vercel.app/policy.md)';
@@ -131,7 +134,7 @@ async function processItem(item){
   return {evidence_id:item.evidence_id,state:'fetch_failed',archive_url:url,snapshot_at:parseWaybackTimestampToIso(snap.timestamp),text_sha256:null,text_length:null,rule_version:RULE_VERSION,detail:'unsupported content-type'};
  }
  const {createHash}=await import('node:crypto');
- const state=quoteCheck(item.quote,text);
+ const state=quoteCheck(item.quote,text,{trailingPunctuation:true});
  return {
   evidence_id:item.evidence_id,state,archive_url:url,snapshot_at:parseWaybackTimestampToIso(snap.timestamp),
   text_sha256:createHash('sha256').update(text,'utf8').digest('hex'),text_length:Array.from(text).length,
@@ -146,8 +149,16 @@ function parseWaybackTimestampToIso(ts){
 }
 
 async function main(){
- const pending=await morumFetch(`/admin/archive-checks/pending?limit=${Math.min(Math.max(limit,1),200)}`);
- const items=pending.items??[];
+ // ARCHIVE_CHECK_ITEMS_FILE: a JSON array of pending-shaped items to (re)check instead of the pending list,
+ // e.g. to re-run rows recorded under an older rule version. Results are appended like any other run.
+ let items;
+ if(process.env.ARCHIVE_CHECK_ITEMS_FILE){
+  const {readFileSync}=await import('node:fs');
+  items=JSON.parse(readFileSync(process.env.ARCHIVE_CHECK_ITEMS_FILE,'utf8'));
+ }else{
+  const pending=await morumFetch(`/admin/archive-checks/pending?limit=${Math.min(Math.max(limit,1),200)}`);
+  items=pending.items??[];
+ }
  for(const item of items){
   const result=await processItem(item);
   if(dryRun){

@@ -3,7 +3,7 @@
  * vectors are run through the real SQL function in tests/db/archive-check.integration.test.mjs
  * to assert the port agrees with the database on every one. No database, no network here. */
 import test from 'node:test';import assert from 'node:assert/strict';
-import {quoteCheck,normalizeQuote,trimText} from '../../scripts/lib/quote-check.mjs';
+import {stripTrailingPunctuation,quoteCheck,normalizeQuote,trimText} from '../../scripts/lib/quote-check.mjs';
 
 export const VECTORS=[
  {name:'exact substring',quote:'the quick brown fox',submitted:'Once upon a time, the quick brown fox jumped.',expected:'found_exact'},
@@ -39,4 +39,13 @@ test('normalizeQuote is idempotent',()=>{
   const once=normalizeQuote(v.quote||' ');
   assert.equal(normalizeQuote(once),once);
  }
+});
+
+test('archive_check/2: trailing terminal punctuation is ignored only when asked',()=>{
+ const page='a very chilly -18°C (0°F) instead of the comfortable 15°C (59°F) that it is today.';
+ const quote='a very chilly -18°C (0°F) instead of the comfortable 15°C (59°F).';
+ assert.equal(quoteCheck(quote,page),'not_found');
+ assert.equal(quoteCheck(quote,page,{trailingPunctuation:true}),'found_normalized');
+ assert.equal(quoteCheck('completely different words.',page,{trailingPunctuation:true}),'not_found');
+ assert.equal(stripTrailingPunctuation('end?!…"'),'end');
 });

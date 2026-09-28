@@ -45,13 +45,26 @@ export function normalizeQuote(t){
 /** Port of knowledge.quote_check(quote,submitted) -> one of the six states
  * the SQL function returns (never 'not_applicable', which only applies to
  * internal evidence). */
-export function quoteCheck(quote,submitted){
+/** Strips terminal punctuation a quoter may add or drop when cutting a
+ * sentence short: . ! ? … and closing quotes/brackets after it. Used only by
+ * archive_check/2, never by the SQL-parity path. */
+export function stripTrailingPunctuation(t){
+ return t.replace(/[\s.!?\u2026"'\u201d\u2019)\]]+$/u,'');
+}
+
+/** @param {{trailingPunctuation?:boolean}} [options] archive_check/2 sets
+ * trailingPunctuation:true so "…(59°F)." still matches "…(59°F) that it is". */
+export function quoteCheck(quote,submitted,options={}){
  if(quote===null||quote===undefined||trimText(quote).length===0)return 'no_quote';
  if(submitted===null||submitted===undefined||trimText(submitted).length===0)return 'no_text';
  if(submitted.indexOf(quote)>=0)return 'found_exact';
  const nq=normalizeQuote(quote);
  const ns=normalizeQuote(submitted);
  if(ns.indexOf(nq)>=0)return 'found_normalized';
+ if(options.trailingPunctuation){
+  const stripped=stripTrailingPunctuation(nq);
+  if(stripped.length>=4&&stripped!==nq&&ns.indexOf(stripped)>=0)return 'found_normalized';
+ }
  // Split on an ellipsis: U+2026 or three literal dots.
  const frags=nq.split(/…|\.\.\./);
  if(frags.length>=2){
