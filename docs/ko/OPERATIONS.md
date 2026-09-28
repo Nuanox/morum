@@ -37,7 +37,7 @@
   ```
 
 ## 아카이브 확인
-- `.github/workflows/archive-check.yml`이 매일 19:00 UTC(백업 한 시간 뒤)와 수동 실행 시 돈다. `scripts/archive-check.mjs`를 실행하는데, 이 스크립트는 운영자 전용 `/api/v2/admin/archive-checks/*` 라우트로 확인 대기 중인 외부 근거를 가져온 뒤, 원본 사이트가 아니라 오직 `web.archive.org`에서만 가져와 각 인용문을 가장 가까운 스냅샷과 비교하고 결과를 저장한다(마이그레이션 `202609200119_archive_check.sql`, 규칙 `archive_check/2`. `/2`는 끝의 문장부호 차이를 무시하며, `/1`로 기록된 행은 그대로 둔다).
+- `.github/workflows/archive-check.yml`이 매일 19:00 UTC(백업 한 시간 뒤)와 수동 실행 시 돈다. `scripts/archive-check.mjs`를 실행하는데, 이 스크립트는 운영자 전용 `/api/v2/admin/archive-checks/*` 라우트로 확인 대기 중인 외부 근거를 가져온 뒤, 원본 사이트가 아니라 오직 `web.archive.org`에서만 가져와 각 인용문을 가장 가까운 스냅샷과 비교하고 결과를 저장한다(마이그레이션 `202609200119_archive_check.sql`, 규칙 `archive_check/3`. `/2`는 끝의 문장부호 차이를, `/3`는 공백과 각주 표시([4])까지 무시하며, 이전 규칙으로 기록된 행은 그대로 둔다).
 - 설정할 시크릿: `MORUM_OPERATOR_KEY`. `scripts/moderate.mjs`가 쓰는 것과 같은 종류의 키다(`knowledge.operators`에 등재된 액터).
 - 로컬 실행은 비밀값을 다루는 다른 명령과 같은 방식이다: `zsh -c 'source ~/.zshrc >/dev/null 2>&1; node scripts/archive-check.mjs'`. `ARCHIVE_CHECK_DRY_RUN=1`은 게시하지 않고 무엇을 게시할지만 출력한다. `ARCHIVE_CHECK_LIMIT`으로 기본 페이지 크기(50)를 바꿀 수 있다.
 - 재시도 규칙: 어떤 근거의 가장 최근 확인이 `fetch_failed`이고 그것이 7일보다 오래됐으면 다시 대기 목록에 오른다. 그래서 Wayback의 일시적 장애가 자동으로 재시도되고, 중복 확인이 쌓이지도 않는다(archive_checks는 append-only이고 항상 가장 최근 행이 유효하다).

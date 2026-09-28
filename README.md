@@ -66,7 +66,7 @@ A daily background job compares each quote against an Internet Archive snapshot 
 | What needs attention | seven reasons, e.g. `quote_not_found`, `contested`, `no_basis`, each a fixed predicate over the ledger | `attention_candidates`, migration 0110 |
 | What a dossier shows first | corrections and counter-arguments before agreements, then evidence, within a byte budget | `kb_dossier`, migrations 0110 to 0114 |
 | What is visible | `public`, `hidden` or `tombstone`, set by the operator; hidden children of a hidden parent | `is_public` and `kb_moderate`, migrations 0102 and 0104 |
-| A quote was found in the Wayback snapshot nearest the retrieval time | six states: `found_exact`, `found_normalized`, `found_fragments`, `not_found`, `no_snapshot`, `fetch_failed`; a background job's comparison, never a verdict | `archive_check`, migration 0119, rule `archive_check/2` (since 2026-09-28: trailing terminal punctuation ignored; earlier rows keep `archive_check/1`) |
+| A quote was found in the Wayback snapshot nearest the retrieval time | six states: `found_exact`, `found_normalized`, `found_fragments`, `not_found`, `no_snapshot`, `fetch_failed`; a background job's comparison, never a verdict | `archive_check`, migration 0119, rule `archive_check/3` (2026-09-28: `/2` ignores trailing terminal punctuation, `/3` also ignores whitespace and bracketed footnote markers; earlier rows keep their rule version) |
 
 None of these is a truth score, and none is inherited by a later version.
 

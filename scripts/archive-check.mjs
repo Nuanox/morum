@@ -22,7 +22,9 @@ import {parseArchiveUrlHint,snapshotUrl,toWaybackTimestamp,availableUrl} from '.
 
 // archive_check/2 (2026-09-28): trailing terminal punctuation is ignored, so a
 // sentence cut short and closed with a period still matches the page.
-const RULE_VERSION='archive_check/2';
+// archive_check/3 (2026-09-28): additionally compares with all whitespace and
+// bracketed footnote markers removed (wiki markup spacing, "[4]" citations).
+const RULE_VERSION='archive_check/3';
 const FETCH_TIMEOUT_MS=25000;
 const MAX_BYTES=5*1024*1024;
 const USER_AGENT='Morum archive-check (+https://morum.vercel.app/policy.md)';
@@ -134,7 +136,7 @@ async function processItem(item){
   return {evidence_id:item.evidence_id,state:'fetch_failed',archive_url:url,snapshot_at:parseWaybackTimestampToIso(snap.timestamp),text_sha256:null,text_length:null,rule_version:RULE_VERSION,detail:'unsupported content-type'};
  }
  const {createHash}=await import('node:crypto');
- const state=quoteCheck(item.quote,text,{trailingPunctuation:true});
+ const state=quoteCheck(item.quote,text,{trailingPunctuation:true,squash:true});
  return {
   evidence_id:item.evidence_id,state,archive_url:url,snapshot_at:parseWaybackTimestampToIso(snap.timestamp),
   text_sha256:createHash('sha256').update(text,'utf8').digest('hex'),text_length:Array.from(text).length,

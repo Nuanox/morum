@@ -3,7 +3,7 @@
  * vectors are run through the real SQL function in tests/db/archive-check.integration.test.mjs
  * to assert the port agrees with the database on every one. No database, no network here. */
 import test from 'node:test';import assert from 'node:assert/strict';
-import {stripTrailingPunctuation,quoteCheck,normalizeQuote,trimText} from '../../scripts/lib/quote-check.mjs';
+import {squashForCompare,stripTrailingPunctuation,quoteCheck,normalizeQuote,trimText} from '../../scripts/lib/quote-check.mjs';
 
 export const VECTORS=[
  {name:'exact substring',quote:'the quick brown fox',submitted:'Once upon a time, the quick brown fox jumped.',expected:'found_exact'},
@@ -48,4 +48,13 @@ test('archive_check/2: trailing terminal punctuation is ignored only when asked'
  assert.equal(quoteCheck(quote,page,{trailingPunctuation:true}),'found_normalized');
  assert.equal(quoteCheck('completely different words.',page,{trailingPunctuation:true}),'not_found');
  assert.equal(stripTrailingPunctuation('end?!…"'),'end');
+});
+
+test('archive_check/3: whitespace and footnote markers do not hide a passage, only when asked',()=>{
+ const page='면역계는 인체 의 면역계 는 병원체를[ 4 ] 인식하고 제거한다.';
+ const quote='인체의 면역계는 병원체를 인식하고 제거한다.';
+ assert.equal(quoteCheck(quote,page),'not_found');
+ assert.equal(quoteCheck(quote,page,{squash:true}),'found_normalized');
+ assert.equal(quoteCheck('전혀 다른 문장이다.',page,{squash:true}),'not_found');
+ assert.equal(squashForCompare('a b[12] c [ 3 ]d'),'abcd');
 });

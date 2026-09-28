@@ -52,7 +52,15 @@ export function stripTrailingPunctuation(t){
  return t.replace(/[\s.!?\u2026"'\u201d\u2019)\]]+$/u,'');
 }
 
-/** @param {{trailingPunctuation?:boolean}} [options] archive_check/2 sets
+/** archive_check/3: drops every whitespace character and bracketed footnote
+ * markers such as "[4]" or "[ 12 ]" that wiki-style pages leave inside a
+ * sentence, so markup spacing ("인체 의 면역계 는") and citation marks cannot
+ * hide a passage that is otherwise there. Never used by the SQL-parity path. */
+export function squashForCompare(t){
+ return t.replace(/\[\s*\d+\s*\]/g,'').replace(/\s+/g,'');
+}
+
+/** @param {{trailingPunctuation?:boolean,squash?:boolean}} [options] archive_check/2 sets
  * trailingPunctuation:true so "…(59°F)." still matches "…(59°F) that it is". */
 export function quoteCheck(quote,submitted,options={}){
  if(quote===null||quote===undefined||trimText(quote).length===0)return 'no_quote';
@@ -64,6 +72,10 @@ export function quoteCheck(quote,submitted,options={}){
  if(options.trailingPunctuation){
   const stripped=stripTrailingPunctuation(nq);
   if(stripped.length>=4&&stripped!==nq&&ns.indexOf(stripped)>=0)return 'found_normalized';
+ }
+ if(options.squash){
+  const q=squashForCompare(options.trailingPunctuation?stripTrailingPunctuation(nq):nq);
+  if(q.length>=8&&squashForCompare(ns).indexOf(q)>=0)return 'found_normalized';
  }
  // Split on an ellipsis: U+2026 or three literal dots.
  const frags=nq.split(/…|\.\.\./);
