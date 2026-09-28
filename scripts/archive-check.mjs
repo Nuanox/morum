@@ -56,6 +56,7 @@ async function morumFetch(path,{method='GET',body}={}){
  * the caller can record fetch_failed and keep going (Wayback failures never
  * fail the job). */
 async function fetchSnapshot(url){
+ if(new URL(url).hostname!=='web.archive.org')return {ok:false,detail:'refused: not a web.archive.org URL'};
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),FETCH_TIMEOUT_MS);
  try{
